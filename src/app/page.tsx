@@ -1,103 +1,177 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import axios from "axios";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function RegisterForm() {
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [positions, setPositions] = useState<any[]>([]);
+  const [form, setForm] = useState({
+    userId: "",
+    displayName: "",
+    flname: "",
+    nname: "",
+    dob: "",
+    department: "",
+    position: "",
+    email: "",
+    phone: "",
+  });
+
+  // ✅ Init LIFF
+  useEffect(() => {
+    const initLiff = async () => {
+      // @ts-ignore
+      await liff.init({ liffId: "2007772610-2rjPV8NG" });
+      if (!liff.isLoggedIn()) liff.login();
+      const profile = await liff.getProfile();
+      setForm((f) => ({
+        ...f,
+        userId: profile.userId,
+        displayName: profile.displayName,
+      }));
+    };
+    initLiff();
+  }, []);
+
+  // ✅ โหลด department จาก Supabase
+  useEffect(() => {
+    const loadDeps = async () => {
+      const { data, error } = await supabase
+        .from("dep_pos")
+        .select("dep_id, p_id, departments(dep_id,dep_name), position(p_id,p_name)");
+      if (error) {
+        console.error("Supabase error:", error);
+        return;
+      }
+      const depMap: any = {};
+      data.forEach((row: any) => {
+        if (!depMap[row.departments.dep_id]) {
+          depMap[row.departments.dep_id] = {
+            dep_id: row.departments.dep_id,
+            dep_name: row.departments.dep_name,
+            positions: [],
+          };
+        }
+        depMap[row.departments.dep_id].positions.push({
+          p_id: row.position.p_id,
+          p_name: row.position.p_name,
+        });
+      });
+      setDepartments(Object.values(depMap));
+    };
+    loadDeps();
+  }, []);
+
+  // ✅ เปลี่ยนแผนก
+  useEffect(() => {
+    if (!form.department) {
+      setPositions([]);
+      return;
+    }
+    const dep = departments.find((d) => d.dep_id === form.department);
+    setPositions(dep?.positions || []);
+  }, [form.department, departments]);
+
+  // ✅ จัดการ input
+  const handleChange = (e: any) => {
+    setForm({ ...form, [e.target.id]: e.target.value });
+  };
+
+  // ✅ Submit → ส่ง OTP
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    if (!/^\d{10}$/.test(form.phone)) {
+      Swal.fire("เบอร์ไม่ถูกต้อง", "กรุณากรอกเบอร์โทรศัพท์ 10 หลัก", "warning");
+      return;
+    }
+
+    try {
+      const res = await axios.post("/api/send-otp", form);
+      if (res.data.success) {
+        Swal.fire("สำเร็จ", "OTP ถูกส่งไปที่ " + form.phone, "success");
+      } else {
+        Swal.fire("ผิดพลาด", res.data.message || "ส่ง OTP ไม่ได้", "error");
+      }
+    } catch (err: any) {
+      Swal.fire("Error", err.message, "error");
+    }
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="max-w-3xl mx-auto p-6">
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-8">
+        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+          <i className="fa-solid fa-id-card"></i> ฟอร์มลงทะเบียนพนักงาน
+        </h1>
+        <p className="text-gray-500 mb-6">กรอกข้อมูลให้ครบถ้วนเพื่อยืนยันตัวตนผ่านเบอร์โทร (OTP)</p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="font-medium">ชื่อนามสกุล</label>
+            <input id="flname" value={form.flname} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+          </div>
+          <div>
+            <label className="font-medium">ชื่อเล่น</label>
+            <input id="nname" value={form.nname} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+          </div>
+
+          <div>
+            <label className="font-medium">วันเดือนปีเกิด</label>
+            <input type="date" id="dob" value={form.dob} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+          </div>
+
+          <div>
+            <label className="font-medium">แผนก</label>
+            <select id="department" value={form.department} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1">
+              <option value="">-- กรุณาเลือกแผนก --</option>
+              {departments.map((d) => (
+                <option key={d.dep_id} value={d.dep_id}>{d.dep_name}</option>
+              ))}
+            </select>
+          </div>
+
+          {positions.length > 0 && (
+            <div>
+              <label className="font-medium">ตำแหน่ง</label>
+              <select id="position" value={form.position} onChange={handleChange}
+                className="w-full border rounded-lg px-3 py-2 mt-1">
+                <option value="">-- กรุณาเลือกตำแหน่ง --</option>
+                {positions.map((p) => (
+                  <option key={p.p_id} value={p.p_id}>{p.p_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="font-medium">อีเมล</label>
+            <input type="email" id="email" value={form.email} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+          </div>
+
+          <div>
+            <label className="font-medium">เบอร์โทรศัพท์</label>
+            <input type="tel" id="phone" value={form.phone} onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+          </div>
+
+          <div className="col-span-2">
+            <button type="submit"
+              className="w-full py-3 mt-4 rounded-lg text-white font-semibold shadow
+              bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600">
+              ส่งข้อมูล
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
   );
 }
