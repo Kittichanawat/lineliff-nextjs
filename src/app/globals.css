@@ -1,84 +1,59 @@
-/* -------------------------
-   Tailwind v4 core imports
-------------------------- */
 @import "tailwindcss/preflight";
 @import "tailwindcss/utilities";
 
-/* -------------------------
-   Base styles
-------------------------- */
-html,
-body {
-  @apply bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
-  font-family: 'Inter', sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  @apply font-bold;
-}
-
-a {
-  @apply text-indigo-500 hover:text-indigo-600;
-}
-
-/* -------------------------
-   Form styles
-------------------------- */
+/* ฟอร์ม container */
 .form-container {
-  @apply max-w-3xl mx-auto p-6;
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 1.5rem;
 }
 
+/* Card ของฟอร์ม */
 .form-card {
-  @apply bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8;
+  background-color: theme("colors.white");
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  padding: 2rem;
 }
 
-.form-title {
-  @apply text-2xl font-bold mb-2 flex items-center gap-2 text-gray-800 dark:text-gray-100;
-}
-
-.form-subtitle {
-  @apply text-gray-500 dark:text-gray-400 mb-6;
-}
-
+/* Label */
 .form-label {
-  @apply block font-medium text-sm text-gray-700 dark:text-gray-300 mb-1;
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: theme("colors.gray.700");
 }
 
-.form-input {
-  @apply w-full border border-gray-300 dark:border-gray-600 
-         rounded-lg px-3 py-2 mt-1
-         bg-white dark:bg-gray-700 
-         focus:ring-2 focus:ring-purple-500 outline-none 
-         placeholder-gray-400 dark:placeholder-gray-500;
-}
-
+/* Input / Select */
+.form-input,
 .form-select {
-  @apply w-full border border-gray-300 dark:border-gray-600 
-         rounded-lg px-3 py-2 mt-1 
-         bg-white dark:bg-gray-700
-         focus:ring-2 focus:ring-purple-500 outline-none;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid theme("colors.gray.300");
+  margin-top: 0.25rem;
+  background: theme("colors.white");
 }
 
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: theme("colors.purple.500");
+  box-shadow: 0 0 0 2px theme("colors.purple.300");
+}
+
+/* ปุ่ม */
 .form-button {
-  @apply w-full py-3 mt-4 rounded-lg text-white font-semibold 
-         bg-gradient-to-r from-purple-500 to-indigo-500 
-         hover:from-purple-600 hover:to-indigo-600 
-         transition-colors shadow-md;
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: white;
+  background-image: linear-gradient(to right, #a855f7, #6366f1);
+  transition: background 0.2s;
 }
 
-/* -------------------------
-   OTP Modal styles
-------------------------- */
-.otp-input {
-  @apply w-full text-center tracking-widest text-2xl font-bold 
-         border border-gray-300 dark:border-gray-600 
-         rounded-lg p-3 mb-4 
-         focus:ring-2 focus:ring-purple-500 outline-none;
-}
-
-.otp-button {
-  @apply w-full py-2 rounded-lg text-white font-semibold 
-         bg-gradient-to-r from-purple-500 to-indigo-500 
-         hover:from-purple-600 hover:to-indigo-600 
-         transition-colors;
+.form-button:hover {
+  background-image: linear-gradient(to right, #9333ea, #4f46e5);
 }
