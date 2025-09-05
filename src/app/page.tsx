@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { supabase } from "@/lib/supabaseClient";
+import Modal from "@/components/modal";
 
 export default function RegisterForm() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -19,6 +20,9 @@ export default function RegisterForm() {
     email: "",
     phone: "",
   });
+
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [otp, setOtp] = useState("");
 
   // ✅ Init LIFF
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function RegisterForm() {
     initLiff();
   }, []);
 
-  // ✅ โหลด department จาก Supabase
+  // ✅ โหลด department
   useEffect(() => {
     const loadDeps = async () => {
       const { data, error } = await supabase
@@ -75,24 +79,20 @@ export default function RegisterForm() {
     setPositions(dep?.positions || []);
   }, [form.department, departments]);
 
-  // ✅ จัดการ input
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.id]: e.target.value });
   };
 
-  // ✅ Submit → ส่ง OTP
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!/^\d{10}$/.test(form.phone)) {
       Swal.fire("เบอร์ไม่ถูกต้อง", "กรุณากรอกเบอร์โทรศัพท์ 10 หลัก", "warning");
       return;
     }
-
     try {
       const res = await axios.post("/api/send-otp", form);
       if (res.data.success) {
-        Swal.fire("สำเร็จ", "OTP ถูกส่งไปที่ " + form.phone, "success");
+        setIsOtpOpen(true);
       } else {
         Swal.fire("ผิดพลาด", res.data.message || "ส่ง OTP ไม่ได้", "error");
       }
@@ -101,77 +101,93 @@ export default function RegisterForm() {
     }
   };
 
+  const handleVerifyOtp = async () => {
+    try {
+      const res = await axios.post("/api/verify-otp", { phone: form.phone, otp });
+      if (res.data.verified) {
+        await axios.post("/api/save-form", form);
+        Swal.fire("สำเร็จ", "ข้อมูลถูกบันทึกแล้ว", "success");
+        setIsOtpOpen(false);
+      } else {
+        Swal.fire("OTP ไม่ถูกต้อง", "กรุณาลองใหม่", "error");
+      }
+    } catch (err: any) {
+      Swal.fire("Error", err.message, "error");
+    }
+  };
+
   return (
-    <main className="max-w-3xl mx-auto p-6">
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+    <main className="form-container">
+      <div className="form-card">
+        <h1 className="form-title">
           <i className="fa-solid fa-id-card"></i> ฟอร์มลงทะเบียนพนักงาน
         </h1>
-        <p className="text-gray-500 mb-6">กรอกข้อมูลให้ครบถ้วนเพื่อยืนยันตัวตนผ่านเบอร์โทร (OTP)</p>
+        <p className="form-subtitle">
+          กรอกข้อมูลให้ครบถ้วนเพื่อยืนยันตัวตนผ่านเบอร์โทร (OTP)
+        </p>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="form-grid">
           <div>
-            <label className="font-medium">ชื่อนามสกุล</label>
-            <input id="flname" value={form.flname} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+            <label>ชื่อนามสกุล</label>
+            <input id="flname" value={form.flname} onChange={handleChange} required />
           </div>
           <div>
-            <label className="font-medium">ชื่อเล่น</label>
-            <input id="nname" value={form.nname} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+            <label>ชื่อเล่น</label>
+            <input id="nname" value={form.nname} onChange={handleChange} required />
           </div>
-
           <div>
-            <label className="font-medium">วันเดือนปีเกิด</label>
-            <input type="date" id="dob" value={form.dob} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+            <label>วันเดือนปีเกิด</label>
+            <input type="date" id="dob" value={form.dob} onChange={handleChange} required />
           </div>
-
           <div>
-            <label className="font-medium">แผนก</label>
-            <select id="department" value={form.department} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1">
+            <label>แผนก</label>
+            <select id="department" value={form.department} onChange={handleChange}>
               <option value="">-- กรุณาเลือกแผนก --</option>
               {departments.map((d) => (
-                <option key={d.dep_id} value={d.dep_id}>{d.dep_name}</option>
+                <option key={d.dep_id} value={d.dep_id}>
+                  {d.dep_name}
+                </option>
               ))}
             </select>
           </div>
-
           {positions.length > 0 && (
             <div>
-              <label className="font-medium">ตำแหน่ง</label>
-              <select id="position" value={form.position} onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 mt-1">
+              <label>ตำแหน่ง</label>
+              <select id="position" value={form.position} onChange={handleChange}>
                 <option value="">-- กรุณาเลือกตำแหน่ง --</option>
                 {positions.map((p) => (
-                  <option key={p.p_id} value={p.p_id}>{p.p_name}</option>
+                  <option key={p.p_id} value={p.p_id}>
+                    {p.p_name}
+                  </option>
                 ))}
               </select>
             </div>
           )}
-
           <div>
-            <label className="font-medium">อีเมล</label>
-            <input type="email" id="email" value={form.email} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+            <label>อีเมล</label>
+            <input type="email" id="email" value={form.email} onChange={handleChange} required />
           </div>
-
           <div>
-            <label className="font-medium">เบอร์โทรศัพท์</label>
-            <input type="tel" id="phone" value={form.phone} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mt-1" required />
+            <label>เบอร์โทรศัพท์</label>
+            <input type="tel" id="phone" value={form.phone} onChange={handleChange} required />
           </div>
-
           <div className="col-span-2">
-            <button type="submit"
-              className="w-full py-3 mt-4 rounded-lg text-white font-semibold shadow
-              bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600">
-              ส่งข้อมูล
-            </button>
+            <button type="submit" className="submit-btn">ส่งข้อมูล</button>
           </div>
         </form>
       </div>
+
+      <Modal isOpen={isOtpOpen} onClose={() => setIsOtpOpen(false)} title="ยืนยันรหัส OTP">
+        <input
+          type="text"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          maxLength={6}
+          placeholder="______"
+          className="otp-input"
+        />
+        <button onClick={handleVerifyOtp} className="submit-btn">ยืนยัน</button>
+      </Modal>
     </main>
   );
 }
