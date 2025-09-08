@@ -10,13 +10,6 @@ import { supabase } from "@/lib/supabaseClient";
 import liff from "@line/liff";
 import ReCAPTCHA from "react-google-recaptcha";
 
-// ให้ TypeScript รู้จักตัวแปร LIFF
-declare const liff: {
-  init: (opt: { liffId: string }) => Promise<void>;
-  isLoggedIn: () => boolean;
-  login: () => void;
-  getProfile: () => Promise<{ userId: string; displayName: string }>;
-};
 
 type Position = { p_id: string; p_name: string };
 type Department = { dep_id: string; dep_name: string; positions: Position[] };
@@ -40,7 +33,7 @@ type FormData = {
 export default function RegisterForm() {
   // ---------- Branding ----------
   const LOGO_SRC = "/logo.webp";
-  const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME ?? "Codelabs";
+
 
   // ---------- state ----------
   const [departments, setDepartments] = useState<Department[]>([]);
