@@ -7,173 +7,181 @@
   font-family: 'Prompt', sans-serif;
 }
 
-/* ========================
-   Base & Theme tokens
-======================== */
+/* ======================== Base & Theme tokens ======================== */
 @layer base {
   :root {
-    --brand-1:#6c5ce7;            /* primary */
-    --brand-2:#a66cff;            /* accent  */
-    --ring:rgba(108,92,231,.35);
-
-    /* surface/text (light) */
-    --card-bg:rgba(255,255,255,.85);
-    --text-1:#1d1e20;
-    --text-2:#60636b;
-  }
-
-  @media (prefers-color-scheme:dark) {
-    :root {
-      --card-bg:rgba(22,24,35,.75);
-      --text-1:#e8e8ea;
-      --text-2:#a8abb3;
-    }
+    --brand-1: #6c5ce7; /* primary */
+    --brand-2: #a66cff; /* accent */
+    --ring: rgba(108, 92, 231, .35);
+    /* Enforce Dark Mode Colors */
+    --card-bg: rgba(22, 24, 35, .75);
+    --text-1: #e8e8ea;
+    --text-2: #a8abb3;
   }
 
   html, body {
-    height:100%;
+    height: 100%;
     font-family: 'Prompt', sans-serif;
-
-    @apply text-[color:var(--text-1)] dark:text-[color:var(--text-1)];
-    background:
-      radial-gradient(60rem 60rem at 85% -10%, rgba(166,108,255,.25), transparent 50%),
-      radial-gradient(50rem 50rem at -10% 110%, rgba(108,92,231,.25), transparent 40%),
-      linear-gradient(180deg,#f7f6ff 0,#f2f5ff 25%,#eef3ff 60%,#f7f8ff 100%);
-    background-attachment:fixed;
-    background: linear-gradient(135deg, #f5f3ff, #ede9fe, #e0e7ff); /* สีเดียวกับคอม */
+    @apply text-[color:var(--text-1)];
+    background: radial-gradient(60rem 60rem at 85% -10%, rgba(166, 108, 255, .15), transparent 50%), radial-gradient(50rem 50rem at -10% 110%, rgba(108, 92, 231, .15), transparent 40%), #0d1117;
+    background-attachment: fixed;
   }
 
-  h1,h2,h3,h4,h5,h6 { @apply font-bold; }
-  a { @apply text-indigo-500 hover:text-indigo-600; }
-
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+  a {
+    @apply text-indigo-400 hover:text-indigo-300;
+  }
   /* สีของ option ตอนเปิด dropdown */
-  select option { @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100; }
+  select option {
+    @apply bg-gray-800 text-gray-100;
+  }
 }
 
-/* ========================
-   Components
-======================== */
+/* ======================== Components ======================== */
 @layer components {
-  .page-shell { @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6; }
-
+  /* Wrapper ด้านบน */
+  .page-shell {
+    @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6;
+  }
   /* Brand badge มุมซ้ายบน */
   .brand-badge {
     @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-semibold text-white shadow-lg;
-    background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
-    box-shadow:0 6px 24px rgba(108,92,231,.35);
+    background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
+    box-shadow: 0 6px 24px rgba(108, 92, 231, .35);
   }
-
   /* การ์ดแบบ glass */
   .glass-card {
-    background:var(--card-bg);
-    @apply rounded-2xl border border-white/30 shadow-xl;
-    backdrop-filter:saturate(135%) blur(14px);
-    -webkit-backdrop-filter:saturate(135%) blur(14px);
+    background: var(--card-bg);
+    @apply rounded-2xl border border-white/10 shadow-xl;
+    backdrop-filter: saturate(135%) blur(14px);
+    -webkit-backdrop-filter: saturate(135%) blur(14px);
   }
-
-  .card-pad { padding:clamp(18px,4vw,32px); }
-  .hero-title { font-size:clamp(1.4rem,2.5vw + 0.8rem,2.2rem);letter-spacing:.2px;@apply mb-2; }
-  .hero-sub { color:var(--text-2); }
-
-  .form-section-title { @apply block text-sm font-medium text-gray-200/90 md:text-gray-300 mb-1; }
-
-  .field { @apply relative w-full; }
-  .input-icon { @apply absolute left-3 top-1/2 -translate-y-1/2 text-purple-300 pointer-events-none; }
-
+  .card-pad {
+    padding: clamp(18px, 4vw, 32px);
+  }
+  .hero-title {
+    font-size: clamp(1.4rem, 2.5vw + 0.8rem, 2.2rem);
+    letter-spacing: .2px;
+    color: var(--text-1);
+    @apply mb-2;
+  }
+  .hero-sub {
+    color: var(--text-2);
+  }
+  .form-section-title {
+    @apply block text-sm font-medium text-gray-300 mb-1;
+  }
+  /* กล่อง input/select + ไอคอนซ้าย */
+  .field {
+    @apply relative w-full;
+  }
+  .input-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-purple-300 pointer-events-none;
+  }
   .form-input {
-    @apply w-full rounded-xl border border-white/10
-           bg-white/5 text-gray-100
-           placeholder-gray-400
-           px-4 py-2.5 transition-[box-shadow,border-color,background-color] duration-150;
-    background-clip:padding-box;
+    @apply w-full rounded-xl border border-white/10 bg-white/5 text-gray-100 placeholder-gray-400 px-4 py-2.5 transition-[box-shadow,border-color,background-color] duration-150;
+    background-clip: padding-box;
   }
   .form-input:focus {
-    outline:none; box-shadow:0 0 0 4px var(--ring);
-    border-color:color-mix(in oklab,var(--brand-1) 65%, white);
+    outline: none;
+    box-shadow: 0 0 0 4px var(--ring);
+    border-color: color-mix(in oklab, var(--brand-1) 65%, white);
   }
-
   .form-select {
-    @apply w-full rounded-xl border border-white/10
-           bg-white/5 text-gray-100
-           px-4 py-2.5 transition-[box-shadow,border-color,background-color] duration-150;
-    background-clip:padding-box;
-    appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg fill='none' stroke='%23a66cff' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right .85rem center; background-size:1rem;
+    @apply w-full rounded-xl border border-white/10 bg-white/5 text-gray-100 px-4 py-2.5 transition-[box-shadow,border-color,background-color] duration-150;
+    background-clip: padding-box;
+    appearance: none;
+    /* caret ขวา */
+    background-image: url("data:image/svg+xml,%3Csvg fill='none' stroke='%23a66cff' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .85rem center;
+    background-size: 1rem;
   }
   .form-select:focus {
-    outline:none; box-shadow:0 0 0 4px var(--ring);
-    border-color:color-mix(in oklab,var(--brand-1) 65%, white);
+    outline: none;
+    box-shadow: 0 0 0 4px var(--ring);
+    border-color: color-mix(in oklab, var(--brand-1) 65%, white);
   }
-
-  .field .form-input, .field .form-select { padding-left:2.5rem; }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter:opacity(.85); }
-
+  /* เว้นที่ให้กับไอคอนซ้าย */
+  .field .form-input, .field .form-select {
+    padding-left: 2.5rem;
+  }
+  /* calendar icon ชัดขึ้น (webkit) */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(.75);
+  }
+  /* ปุ่ม gradient */
   .btn-gradient {
-    @apply relative isolate inline-flex justify-center items-center
-           rounded-xl px-4 py-3 font-semibold text-white w-full;
+    @apply relative isolate inline-flex justify-center items-center rounded-xl px-4 py-3 font-semibold text-white w-full;
   }
   .btn-gradient::before {
-    content:''; @apply absolute inset-0 -z-10 rounded-xl;
-    background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
-    box-shadow:0 8px 28px rgba(108,92,231,.35);
-    transition:transform .25s ease, box-shadow .25s ease;
+    content: '';
+    @apply absolute inset-0 -z-10 rounded-xl;
+    background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
+    box-shadow: 0 8px 28px rgba(108, 92, 231, .35);
+    transition: transform .25s ease, box-shadow .25s ease;
   }
-  .btn-gradient:hover::before { transform:translateY(-1px); box-shadow:0 12px 34px rgba(108,92,231,.45); }
-  .btn-icon { @apply mr-2; }
-
-  .form-footer { @apply mt-6 flex items-center text-sm text-gray-400; }
-  .form-footer::before, .form-footer::after { content:''; @apply flex-1 h-px bg-white/10; }
-  .form-footer-text { @apply mx-3 flex items-center gap-2; }
-
+  .btn-gradient:hover::before {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 34px rgba(108, 92, 231, .45);
+  }
+  .btn-icon {
+    @apply mr-2;
+  }
+  /* Footer note + divider */
+  .form-footer {
+    @apply mt-6 flex items-center text-sm text-gray-400;
+  }
+  .form-footer::before, .form-footer::after {
+    content: '';
+    @apply flex-1 h-px bg-white/10;
+  }
+  .form-footer-text {
+    @apply mx-3 flex items-center gap-2;
+  }
   /* ===== Modal ===== */
-  .modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm; }
-  .modal-panel {
-    background:var(--card-bg) !important;  /* fix glass modal */
-    @apply relative w-[min(92vw,28rem)] rounded-2xl border border-white/30 shadow-2xl p-6;
-    backdrop-filter:saturate(135%) blur(14px) !important;
-    -webkit-backdrop-filter:saturate(135%) blur(14px) !important;
-    animation:modalIn .28s ease-out both;
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm;
   }
-  .modal-title { @apply text-lg font-semibold mb-3; }
-  .modal-actions { @apply mt-4 flex justify-end gap-2; }
-  .btn-ghost { @apply rounded-lg border border-white/10 px-4 py-2 text-gray-200 hover:bg-white/10 transition-colors; }
-
+  .modal-panel {
+    background: var(--card-bg);
+    @apply relative w-[min(92vw,28rem)] rounded-2xl border border-white/20 shadow-2xl p-6;
+    animation: modalIn .28s ease-out both;
+  }
+  .modal-title {
+    color: var(--text-1);
+    @apply text-lg font-semibold mb-3;
+  }
+  .modal-actions {
+    @apply mt-4 flex justify-end gap-2;
+  }
+  .btn-ghost {
+    @apply rounded-lg border border-white/10 px-4 py-2 text-gray-200 hover:bg-white/10 transition-colors;
+  }
   .otp-input {
-    @apply w-full text-center tracking-widest text-2xl font-bold
-           rounded-xl border border-white/10 bg-white/5 text-gray-100 px-4 py-3 focus:outline-none;
+    @apply w-full text-center tracking-widest text-2xl font-bold rounded-xl border border-white/10 bg-white/5 text-gray-100 px-4 py-3 focus:outline-none;
   }
-  .otp-input:focus { box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab,var(--brand-1) 65%, white); }
-}
-
-/* ========================
-   Responsive Fix
-======================== */
-@media (max-width: 768px) {
-  html, body {
-    background: linear-gradient(135deg, #f5f3ff, #ede9fe, #e0e7ff) !important;
-    background-attachment: fixed !important;
-  }
-
-  /* แค่ card เท่านั้นที่เปลี่ยน solid บน mobile */
-  .glass-card {
-    background: #ffffff !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  /* ✅ modal ยังใช้ glass */
-  .modal-panel {
-    background: var(--card-bg) !important;
-    backdrop-filter: saturate(135%) blur(14px) !important;
-    -webkit-backdrop-filter: saturate(135%) blur(14px) !important;
+  .otp-input:focus {
+    box-shadow: 0 0 0 4px var(--ring);
+    border-color: color-mix(in oklab, var(--brand-1) 65%, white);
   }
 }
 
-/* ========================
-   Animations / utilities
-======================== */
+/* ======================== Animations / utilities ======================== */
 @layer utilities {
-  @keyframes popIn { from { transform:translateY(8px);opacity:0 } to { transform:none;opacity:1 } }
-  .animate-in { animation:popIn .5s ease both; }
+  @keyframes popIn {
+    from {
+      transform: translateY(8px);
+      opacity: 0
+    }
+    to {
+      transform: none;
+      opacity: 1
+    }
+  }
+  .animate-in {
+    animation: popIn .5s ease both;
+  }
 }
