@@ -41,6 +41,7 @@
       radial-gradient(50rem 50rem at -10% 110%, rgba(108,92,231,.25), transparent 40%),
       linear-gradient(180deg,#f7f6ff 0,#f2f5ff 25%,#eef3ff 60%,#f7f8ff 100%);
     background-attachment:fixed;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe, #e0e7ff); /* สีเดียวกับคอม */
   }
 
   h1,h2,h3,h4,h5,h6{@apply font-bold;}
