@@ -1,29 +1,77 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useCallback } from "react";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  /** กดพื้นหลังแล้วปิดไหม (ดีฟอลต์: true) */
+  closeOnBackdrop?: boolean;
+  /** กดปุ่ม ESC แล้วปิดไหม (ดีฟอลต์: true) */
+  closeOnEsc?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  closeOnBackdrop = true,
+  closeOnEsc = true,
+}: ModalProps) {
+  // ล็อกสกอร์ลของ body ตอนเปิดโมดัล
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  // ปิดด้วยปุ่ม ESC (ถ้าอนุญาต)
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!closeOnEsc) return;
+      if (e.key === "Escape") onClose();
+    },
+    [closeOnEsc, onClose]
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onKeyDown]);
+
   if (!isOpen) return null;
 
+  // คลิกพื้นหลัง: ปิดเฉพาะเมื่ออนุญาต
+  const handleOverlayClick = () => {
+    if (closeOnBackdrop) onClose();
+  };
+
+  // กันคลิกทะลุ/กัน propagation ในแผงโมดัล
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-        {title && <h2 className="text-lg font-semibold mb-4">{title}</h2>}
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={handleOverlayClick}
+    >
+      <div className="modal-panel" onClick={stop}>
+        {title && <h2 className="modal-title">{title}</h2>}
 
-        <div className="mb-4">{children}</div>
+        <div>{children}</div>
 
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
-          >
+        {/* ปุ่มปิด (ถ้าต้องการ) */}
+        <div className="modal-actions">
+          <button type="button" onClick={onClose} className="btn-ghost">
+            <i className="fa-solid fa-xmark mr-2" />
             ปิด
           </button>
         </div>
