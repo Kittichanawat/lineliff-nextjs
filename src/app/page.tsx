@@ -397,29 +397,31 @@ const onSubmit = async (data: FormData) => {
       required
     />
 
-    {/* แสดงเวลาหมดอายุ + เบอร์โทร */}
-    <div className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <i className="fa-regular fa-clock text-purple-500" />
-          <span>
-            รหัสหมดอายุใน{" "}
-            <span className="font-mono font-bold text-purple-600 dark:text-purple-400">
-              {formatTime(otpSeconds)}
-            </span>
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleResendOtp}
-          disabled={otpSeconds > 0 || resendLoading}
-          className="btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
-          title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสใหม่"}
-        >
-          <i className="fa-solid fa-rotate-right mr-2" />
-          {resendLoading ? "กำลังส่ง..." : "ส่งรหัสใหม่"}
-        </button>
-      </div>
+{/* แสดงเวลาหมดอายุ + อีเมล */}
+<div className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <i className="fa-regular fa-clock text-purple-500" />
+      <span>
+        รหัสที่ส่งไปทางอีเมลจะหมดอายุใน{" "}
+        <span className="font-mono font-bold text-purple-600 dark:text-purple-400">
+          {formatTime(otpSeconds)}
+        </span>
+      </span>
+    </div>
+    <button
+      type="button"
+      onClick={handleResendOtp}
+      disabled={otpSeconds > 0 || resendLoading}
+      className="btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+      title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสใหม่"}
+    >
+      <i className="fa-solid fa-rotate-right mr-2" />
+      {resendLoading ? "กำลังส่ง..." : "ส่งรหัสใหม่"}
+    </button>
+  </div>
+</div>
+
 
     {/* โชว์ว่า OTP ถูกส่งไปที่อีเมลอะไร */}
 <p className="text-xs text-gray-500 dark:text-gray-400">
