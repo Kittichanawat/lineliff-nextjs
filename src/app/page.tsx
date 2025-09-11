@@ -421,14 +421,14 @@ const onSubmit = async (data: FormData) => {
         </button>
       </div>
 
-      {/* โชว์ว่า OTP ถูกส่งไปที่เบอร์อะไร */}
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        <i className="fa-solid fa-mobile-screen-button mr-1 text-green-500" />
-        ส่งรหัสไปที่เบอร์{" "}
-        <span className="font-semibold text-gray-800 dark:text-gray-200">
-          {watch("phone") || "ไม่พบเบอร์โทร"}
-        </span>
-      </p>
+    {/* โชว์ว่า OTP ถูกส่งไปที่อีเมลอะไร */}
+<p className="text-xs text-gray-500 dark:text-gray-400">
+  <i className="fa-solid fa-envelope mr-1 text-blue-500" />
+  ส่งรหัสไปที่อีเมล{" "}
+  <span className="font-semibold text-gray-800 dark:text-gray-200">
+    {watch("email") || "ไม่พบอีเมล"}
+  </span>
+</p>
     </div>
 
     <button
