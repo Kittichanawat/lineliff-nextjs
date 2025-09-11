@@ -132,31 +132,33 @@ export default function RegisterForm() {
     setPositions(dep?.positions ?? []);
   }, [selectedDep, departments]);
 
-  // ---------- Handlers ----------
-  const onSubmit = async (data: FormData) => {
-    if (!/^\d{10}$/.test(data.phone)) {
-      toast.error("กรุณากรอกเบอร์โทรศัพท์ 10 หลัก");
-      return;
-    }
 
-    try {
-      setIsLoading(true);
-      const payload = { ...data, userId, displayName, captchaToken };
-      const res = await axios.post("/api/send-otp", payload);
-      if (res.data?.success) {
-        setOtp("");
-        setIsOtpOpen(true);
-        startOtpTimer();
-        toast.success("ส่ง OTP แล้ว กรุณาตรวจสอบ SMS");
-      } else {
-        toast.error(res.data?.message ?? "ส่ง OTP ไม่ได้");
-      }
-    } catch (err) {
-      toast.error("เกิดข้อผิดพลาดในการส่ง OTP");
-    } finally {
-      setIsLoading(false);
+// ---------- Handlers ----------
+const onSubmit = async (data: FormData) => {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+    toast.error("กรุณากรอกอีเมลให้ถูกต้อง");
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+    const payload = { ...data, userId, displayName, captchaToken };
+    const res = await axios.post("/api/send-otp", payload);
+    if (res.data?.success) {
+      setOtp("");
+      setIsOtpOpen(true);
+      startOtpTimer();
+      toast.success("ส่ง OTP ไปยังอีเมลเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย");
+    } else {
+      toast.error(res.data?.message ?? "ส่ง OTP ไม่ได้");
     }
-  };
+  } catch (err) {
+    toast.error("เกิดข้อผิดพลาดในการส่ง OTP");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleResendOtp = async () => {
     if (otpSeconds > 0 || resendLoading) return;
