@@ -185,8 +185,8 @@ export default function RegisterForm() {
     try {
       setIsVerifying(true);
   
-      // ตรวจสอบ OTP ก่อน
-      const res = await axios.post("/api/verify-otp", { phone: watch("phone"), otp });
+      // ตรวจสอบ OTP โดยใช้ email
+      const res = await axios.post("/api/verify-otp", { email: watch("email"), otp });
   
       if (res.data?.message === "success") {
         // รวม payload ฟอร์มทั้งหมด
@@ -222,6 +222,7 @@ export default function RegisterForm() {
       setIsVerifying(false);
     }
   };
+  
   
 
   // ---------- UI ----------
