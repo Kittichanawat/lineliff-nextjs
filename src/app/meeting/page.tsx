@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
-import liff from "@line/liff";
+import { useSearchParams } from "next/navigation";
 
 type LineProfile = {
   userId: string;
@@ -21,10 +20,11 @@ type MeetingForm = {
 };
 
 export default function MeetingPage() {
+  const searchParams = useSearchParams();
+  const groupId = searchParams.get("groupId");
+
   const [profiles, setProfiles] = useState<LineProfile[]>([]);
   const [loading, setLoading] = useState(false);
-  const [groupId, setGroupId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
   const {
     register,
@@ -32,78 +32,22 @@ export default function MeetingPage() {
     formState: { errors },
   } = useForm<MeetingForm>();
 
-  // ✅ Init LIFF (LINE Login channel)
-  useEffect(() => {
-    const initLiff = async () => {
-      try {
-        await liff.init({ liffId: "2008144186-BAaAW5w7" }); // << ใช้ LIFF จาก LINE Login channel
-        if (!liff.isLoggedIn()) liff.login();
-
-        const profile = await liff.getProfile();
-        setUserId(profile.userId);
-        console.log("✅ User login:", profile);
-      } catch (err) {
-        console.error("❌ LIFF init error:", err);
-      }
-    };
-    initLiff();
-  }, []);
-
-  // ✅ ดึง groupId ที่ถูกเก็บจาก Webhook (Messaging API)
-  useEffect(() => {
-    const fetchGroupId = async () => {
-      if (!userId) return;
-
-      // สมมติว่าใน Supabase table: group_members เก็บ mapping userId ↔ groupId
-      const { data, error } = await supabase
-        .from("group_members")
-        .select("groupId")
-        .eq("uline_id", userId)
-        .single();
-
-      if (error || !data) {
-        console.error("❌ ไม่พบ groupId ใน Supabase:", error);
-        return;
-      }
-
-      setGroupId(data.groupId);
-      console.log("✅ Group ID from Supabase:", data.groupId);
-    };
-
-    fetchGroupId();
-  }, [userId]);
-
-  // ✅ ดึง profiles ของสมาชิกใน group
+  // ✅ Fetch profiles by groupId
   useEffect(() => {
     if (!groupId) return;
 
     const fetchProfiles = async () => {
       setLoading(true);
-
-      const { data, error } = await supabase
-        .from("group_members")
-        .select("uline_id")
-        .eq("groupId", groupId);
-
-      if (error || !data) {
-        console.error("❌ Supabase error:", error);
+      try {
+        const res = await fetch(`/api/group-members?groupId=${groupId}`);
+        if (!res.ok) throw new Error("Failed to fetch profiles");
+        const data: LineProfile[] = await res.json();
+        setProfiles(data);
+      } catch (err) {
+        console.error("❌ Fetch members error:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const promises = data.map(async (row: { uline_id: string }) => {
-        const res = await fetch(`/api/line-profile?userId=${row.uline_id}`);
-        if (!res.ok) return null;
-        const profile: LineProfile = await res.json();
-        return profile;
-      });
-
-      const results = (await Promise.all(promises)).filter(
-        (p): p is LineProfile => p !== null
-      );
-
-      setProfiles(results);
-      setLoading(false);
     };
 
     fetchProfiles();
@@ -124,7 +68,7 @@ export default function MeetingPage() {
 
         {!groupId ? (
           <p className="text-red-400">
-            ❌ ยังไม่พบ Group ID (Bot ต้องอยู่ในกลุ่ม และ webhook ต้องเก็บ groupId ก่อน)
+            ❌ ไม่พบ Group ID (ต้องเข้าผ่านลิงก์จาก LINE Group)
           </p>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -136,7 +80,9 @@ export default function MeetingPage() {
                 className="form-input"
               />
               {errors.title && (
-                <span className="text-red-500 text-sm">{errors.title.message}</span>
+                <span className="text-red-500 text-sm">
+                  {errors.title.message}
+                </span>
               )}
             </div>
 
