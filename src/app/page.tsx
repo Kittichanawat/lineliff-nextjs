@@ -314,7 +314,7 @@ const onSubmit = async (data: FormData) => {
           </div>
 
           <div>
-            <label className="form-section-title">เบอร์โทรศัพท์</label>
+            <label className="form-section-title">เบอร์โทรศัพ</label>
             <input
               type="tel"
               {...register("phone", { required: "กรุณากรอกเบอร์โทรศัพท์" })}
