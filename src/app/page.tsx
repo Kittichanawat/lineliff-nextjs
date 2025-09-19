@@ -422,7 +422,7 @@ const onSubmit = async (data: FormData) => {
   </div>
 </div>
 
-
+ี<div>
     {/* โชว์ว่า OTP ถูกส่งไปที่อีเมลอะไร */}
 <p className="text-xs text-gray-500 dark:text-gray-400">
   <i className="fa-solid fa-envelope mr-1 text-blue-500" />
