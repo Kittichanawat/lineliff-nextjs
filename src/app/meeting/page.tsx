@@ -24,6 +24,7 @@ export default function MeetingPage() {
   const [profiles, setProfiles] = useState<LineProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const {
     register,
@@ -31,28 +32,48 @@ export default function MeetingPage() {
     formState: { errors },
   } = useForm<MeetingForm>();
 
-  // ✅ Init LIFF + get groupId
+  // ✅ Init LIFF (LINE Login channel)
   useEffect(() => {
     const initLiff = async () => {
       try {
-        await liff.init({ liffId: "2008144186-BAaAW5w7" });
+        await liff.init({ liffId: "2008144186-BAaAW5w7" }); // << ใช้ LIFF จาก LINE Login channel
         if (!liff.isLoggedIn()) liff.login();
-  
-        const context = liff.getContext();
-        console.log("LIFF context:", context);
-  
-        if (context?.type === "group" && context?.groupId) {
-          setGroupId(context.groupId);
-        }
+
+        const profile = await liff.getProfile();
+        setUserId(profile.userId);
+        console.log("✅ User login:", profile);
       } catch (err) {
-        console.error("LIFF init error:", err);
+        console.error("❌ LIFF init error:", err);
       }
     };
     initLiff();
   }, []);
-  
 
-  // ✅ Fetch profiles by groupId
+  // ✅ ดึง groupId ที่ถูกเก็บจาก Webhook (Messaging API)
+  useEffect(() => {
+    const fetchGroupId = async () => {
+      if (!userId) return;
+
+      // สมมติว่าใน Supabase table: group_members เก็บ mapping userId ↔ groupId
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("groupId")
+        .eq("uline_id", userId)
+        .single();
+
+      if (error || !data) {
+        console.error("❌ ไม่พบ groupId ใน Supabase:", error);
+        return;
+      }
+
+      setGroupId(data.groupId);
+      console.log("✅ Group ID from Supabase:", data.groupId);
+    };
+
+    fetchGroupId();
+  }, [userId]);
+
+  // ✅ ดึง profiles ของสมาชิกใน group
   useEffect(() => {
     if (!groupId) return;
 
@@ -102,7 +123,9 @@ export default function MeetingPage() {
         </h1>
 
         {!groupId ? (
-          <p className="text-red-400">❌ ไม่พบ Group ID (ต้องเปิดผ่านกลุ่ม LINE)</p>
+          <p className="text-red-400">
+            ❌ ยังไม่พบ Group ID (Bot ต้องอยู่ในกลุ่ม และ webhook ต้องเก็บ groupId ก่อน)
+          </p>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* หัวข้อ */}
@@ -153,7 +176,10 @@ export default function MeetingPage() {
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto border border-white/10 rounded-xl p-3 bg-white/5">
                   {profiles.map((p) => (
-                    <label key={p.userId} className="flex items-center gap-3 text-gray-100">
+                    <label
+                      key={p.userId}
+                      className="flex items-center gap-3 text-gray-100"
+                    >
                       <input
                         type="checkbox"
                         value={p.userId}
