@@ -6,11 +6,6 @@ import { useForm } from "react-hook-form";
 import Image from "next/image";
 import liff from "@line/liff";
 
-type UserRow = {
-  id: number;
-  uline_id: string;
-};
-
 type LineProfile = {
   userId: string;
   displayName: string;
@@ -44,12 +39,12 @@ export default function MeetingPage() {
         if (!liff.isLoggedIn()) liff.login();
 
         const context = liff.getContext();
-        if (context.type === "group" && context.groupId) {
+        if (context?.type === "group" && context?.groupId) {
           setGroupId(context.groupId);
           console.log("✅ Group ID:", context.groupId);
         }
-      } catch (err) {
-        console.error("❌ LIFF init error:", err);
+      } catch (error) {
+        console.error("❌ LIFF init error:", error);
       }
     };
     initLiff();
@@ -62,7 +57,6 @@ export default function MeetingPage() {
     const fetchProfiles = async () => {
       setLoading(true);
 
-      // 📌 ตัวอย่าง: สมมติคุณมี table group_members (groupId, uline_id)
       const { data, error } = await supabase
         .from("group_members")
         .select("uline_id")
@@ -74,7 +68,6 @@ export default function MeetingPage() {
         return;
       }
 
-      // 📌 ดึง profile จาก LINE
       const promises = data.map(async (row: { uline_id: string }) => {
         const res = await fetch(`/api/line-profile?userId=${row.uline_id}`);
         if (!res.ok) return null;
