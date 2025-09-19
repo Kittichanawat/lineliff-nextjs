@@ -1,19 +1,36 @@
-import { Suspense } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 import MeetingContent from "./MeetingContent";
 
-export default function Page() {
-  return (
-    <main className="page-shell">
-      <div className="glass-card card-pad animate-in">
-        <h1 className="hero-title flex items-center gap-2">
-          <i className="fa-solid fa-people-group text-purple-400" />
-          สร้างการประชุมใหม่
-        </h1>
+export default function MeetingPage() {
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-        <Suspense fallback={<p className="text-gray-400">Loading...</p>}>
-          <MeetingContent />
-        </Suspense>
-      </div>
-    </main>
-  );
+  useEffect(() => {
+    const fetchGroupId = async () => {
+      try {
+        const res = await fetch("/api/groupId");
+        const data = await res.json();
+        if (data.groupId) {
+          setGroupId(data.groupId);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching groupId:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchGroupId();
+  }, []);
+
+  if (loading) {
+    return <p className="text-gray-400">⏳ กำลังโหลด Group ID...</p>;
+  }
+
+  if (!groupId) {
+    return <p className="text-red-500">❌ ยังไม่ได้รับ Group ID (ต้องมาจาก n8n)</p>;
+  }
+
+  return <MeetingContent groupId={groupId} />;
 }

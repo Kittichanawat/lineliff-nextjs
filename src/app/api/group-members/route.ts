@@ -1,36 +1,47 @@
-// src/app/api/group-members/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
-  const groupId = req.nextUrl.searchParams.get("groupId");
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const groupId = searchParams.get("groupId");
+
   if (!groupId) {
-    return NextResponse.json({ error: "groupId required" }, { status: 400 });
+    return NextResponse.json({ error: "Missing groupId" }, { status: 400 });
   }
 
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) {
-    return NextResponse.json({ error: "LINE token missing" }, { status: 500 });
-  }
+  try {
+    // 🔑 ใช้ LINE Messaging API
+    const res = await fetch(
+      `https://api.line.me/v2/bot/group/${groupId}/members/ids`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+        },
+      }
+    );
 
-  // 1. ดึง userId ทั้งหมดในกลุ่ม
-  const resIds = await fetch(
-    `https://api.line.me/v2/bot/group/${groupId}/members/ids`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
+    const ids = await res.json();
+
+    // Map userId → profile
+    const members: unknown[] = [];
+    for (const uid of ids.memberIds || []) {
+      const profileRes = await fetch(
+        `https://api.line.me/v2/bot/profile/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+          },
+        }
+      );
+      const profile = await profileRes.json();
+      members.push(profile);
     }
-  );
-  const { memberIds } = await resIds.json();
 
-  // 2. ดึง profile ทีละ userId
-  const members = await Promise.all(
-    memberIds.map(async (uid: string) => {
-      const res = await fetch(`https://api.line.me/v2/bot/profile/${uid}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return null;
-      return res.json();
-    })
-  );
-
-  return NextResponse.json(members.filter(Boolean));
+    return NextResponse.json({ members });
+} catch (err) {
+    console.error("❌ Failed to fetch group members:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch members" },
+      { status: 500 }
+    );
+  }
 }
