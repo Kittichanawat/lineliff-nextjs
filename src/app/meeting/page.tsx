@@ -1,9 +1,9 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 
 type LineProfile = {
   userId: string;
@@ -32,25 +32,25 @@ export default function MeetingPage() {
     formState: { errors },
   } = useForm<MeetingForm>();
 
-  // ✅ Fetch profiles by groupId
+  // ✅ Fetch members จาก API (เรียกไปยัง LINE Messaging API ผ่าน backend)
   useEffect(() => {
     if (!groupId) return;
 
-    const fetchProfiles = async () => {
+    const fetchMembers = async () => {
       setLoading(true);
       try {
         const res = await fetch(`/api/group-members?groupId=${groupId}`);
-        if (!res.ok) throw new Error("Failed to fetch profiles");
+        if (!res.ok) throw new Error("Fetch failed");
         const data: LineProfile[] = await res.json();
         setProfiles(data);
       } catch (err) {
-        console.error("❌ Fetch members error:", err);
+        console.error("❌ fetch group-members error:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfiles();
+    fetchMembers();
   }, [groupId]);
 
   const onSubmit = (form: MeetingForm) => {
@@ -68,7 +68,7 @@ export default function MeetingPage() {
 
         {!groupId ? (
           <p className="text-red-400">
-            ❌ ไม่พบ Group ID (ต้องเข้าผ่านลิงก์จาก LINE Group)
+            ❌ ไม่พบ Group ID (ต้องเปิดลิงก์พร้อม ?groupId=...)
           </p>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -118,9 +118,11 @@ export default function MeetingPage() {
               {loading ? (
                 <p className="text-gray-400">กำลังโหลดรายชื่อ...</p>
               ) : profiles.length === 0 ? (
-                <p className="text-red-500">ไม่พบรายชื่อผู้ใช้ในกลุ่ม</p>
+                <p className="text-red-500">
+                  ไม่พบรายชื่อผู้ใช้ในกลุ่ม (groupId: {groupId})
+                </p>
               ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-white/10 rounded-xl p-3 bg-white/5">
+                <div className="space-y-2 max-h-60 overflow-y-auto border border-white/10 rounded-xl p-3 bg-white/5">
                   {profiles.map((p) => (
                     <label
                       key={p.userId}
