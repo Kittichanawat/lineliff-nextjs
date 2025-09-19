@@ -35,7 +35,7 @@ export default function MeetingPage() {
   useEffect(() => {
     const initLiff = async () => {
       try {
-        await liff.init({ liffId: "2008144179-gxZEKQ7y" });
+        await liff.init({ liffId: "2008144186-BAaAW5w7" });
         if (!liff.isLoggedIn()) liff.login();
 
         const context = liff.getContext();
