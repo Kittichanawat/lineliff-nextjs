@@ -121,11 +121,11 @@ export default function MeetingContent() {
                 />
                 {m.pictureUrl && (
                   <Image
-                          src={p.pictureUrl}
-                          alt={p.displayName}
-                          width={32}
-                          height={32}
-                          className="rounded-full"
+                  src={m.pictureUrl}
+                  alt={m.displayName}
+                  width={32}
+                  height={32}
+                  className="rounded-full"
                         />
                 )}
                 <span>{m.displayName}</span>
