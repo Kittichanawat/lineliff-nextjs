@@ -37,18 +37,20 @@ export default function MeetingPage() {
       try {
         await liff.init({ liffId: "2008144186-BAaAW5w7" });
         if (!liff.isLoggedIn()) liff.login();
-
+  
         const context = liff.getContext();
+        console.log("LIFF context:", context);
+  
         if (context?.type === "group" && context?.groupId) {
           setGroupId(context.groupId);
-          console.log("✅ Group ID:", context.groupId);
         }
-      } catch (error) {
-        console.error("❌ LIFF init error:", error);
+      } catch (err) {
+        console.error("LIFF init error:", err);
       }
     };
     initLiff();
   }, []);
+  
 
   // ✅ Fetch profiles by groupId
   useEffect(() => {
