@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
 
-let latestGroupId: string | null = null;
+let cachedGroupId: string | null = null;
 
-// ⬅️ POST จาก n8n
+// ✅ รับ groupId จาก n8n
 export async function POST(req: Request) {
-    try {
-      const { groupId } = await req.json();
-      latestGroupId = groupId;
-      return NextResponse.json({ ok: true, saved: groupId });
-    } catch (err) {
-      console.error("❌ Error in POST /api/groupId:", err);
-      return NextResponse.json({ ok: false, error: "Invalid body" }, { status: 400 });
+  try {
+    const body = await req.json();
+    if (!body.groupId) {
+      return NextResponse.json({ error: "❌ ต้องส่ง groupId" }, { status: 400 });
     }
-  }
-  
 
-// ⬅️ GET ให้ frontend เอา groupId ล่าสุด
+    cachedGroupId = body.groupId;
+    return NextResponse.json({ success: true, groupId: cachedGroupId });
+  } catch {
+    return NextResponse.json({ error: "❌ Invalid JSON" }, { status: 400 });
+  }
+}
+
+// ✅ ให้ frontend มาดึง groupId
 export async function GET() {
-  return NextResponse.json({ groupId: latestGroupId });
+  if (!cachedGroupId) {
+    return NextResponse.json({ error: "❌ ยังไม่มี groupId" }, { status: 404 });
+  }
+  return NextResponse.json({ groupId: cachedGroupId });
 }
