@@ -168,10 +168,19 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
           id: loadingToast,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error:", err);
-      toast.error(`Exception: ${err.message || String(err)}`, { id: loadingToast });
+    
+      let message: string;
+      if (err instanceof Error) {
+        message = err.message;
+      } else {
+        message = String(err);
+      }
+    
+      toast.error(`Exception: ${message}`, { id: loadingToast });
     }
+    
   };
 
   return (
