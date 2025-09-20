@@ -80,6 +80,12 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
     const loadingToast = toast.loading("⏳ กำลังส่งข้อมูล...");
 
     try {
+
+      const cleanForm = {
+        ...form,
+        title: form.title.replace(/\n/g, " "),          // ตัด \n ออก
+        description: form.description.replace(/\n/g, " "), // ตัด \n ออก
+      };
       // helper แปลงเวลา
       const formatDateTime = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -96,8 +102,8 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
 
       // ✅ calendar event object
       const calendarEvent = {
-        summary: form.title,
-        description: form.description,
+        summary: cleanForm.title,
+        description: cleanForm.description,
         start: {
           dateTime: formatDateTime(form.startTime),
           timeZone: "Asia/Bangkok",
