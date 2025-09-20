@@ -31,7 +31,8 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
   const [profiles, setProfiles] = useState<LineProfile[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<MeetingForm>();
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<MeetingForm>();
+
 
   // 🟣 โหลดรายชื่อจาก Supabase + LINE Profile
   useEffect(() => {
@@ -150,6 +151,14 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
         toast.success("ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", {
           id: loadingToast,
         });
+        reset({
+          title: "",
+          description: "",
+          startTime: "",
+          endTime: "",
+          participants: [],
+          meetingLink: "",
+        }); // ✅ เคลียร์ input ทั้งหมด
       } else {
         throw new Error(lineResult.error || "LINE API failed");
       }
