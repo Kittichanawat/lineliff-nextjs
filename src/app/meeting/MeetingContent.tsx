@@ -147,7 +147,7 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
       const lineResult = await lineRes.json();
 
       if (lineRes.ok && lineResult.success) {
-        toast.success("✅ ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", {
+        toast.success("ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", {
           id: loadingToast,
         });
       } else {
@@ -155,7 +155,7 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
       }
     } catch (err: unknown) {
       console.error("Error:", err);
-      toast.error(`❌ ${err instanceof Error ? err.message : String(err)}`, {
+      toast.error(`${err instanceof Error ? err.message : String(err)}`, {
         id: loadingToast,
       });
     }
