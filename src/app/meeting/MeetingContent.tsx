@@ -83,9 +83,12 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
       // helper แปลงเวลา
       const formatDateTime = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toISOString().replace("Z", "+07:00");
+        // 🟣 แปลงเป็น ISO string ตาม timezone Asia/Bangkok
+        return date.toLocaleString("sv-SE", { 
+          timeZone: "Asia/Bangkok", 
+          hour12: false 
+        }).replace(" ", "T") + "+07:00";
       };
-
       // ✅ เลือกผู้เข้าร่วม
       const selectedProfiles = profiles.filter((p) =>
         form.participants.includes(p.userId)
