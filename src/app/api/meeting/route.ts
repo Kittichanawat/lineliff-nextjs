@@ -4,7 +4,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // ส่งต่อไปที่ n8n webhook
+    // 🔹 Forward ไปที่ n8n webhook
     const res = await fetch(
       "https://n8n-three.nn-dev.me/webhook-test/fc963919-2417-4225-990b-01c2b6f2d78c",
       {
@@ -18,9 +18,12 @@ export async function POST(req: Request) {
       throw new Error(`n8n error: ${res.status}`);
     }
 
-    return NextResponse.json({ success: true });
+    // ✅ อ่าน response JSON ที่ n8n ส่งกลับมา
+    const result = await res.json();
+
+    // ✅ ส่งต่อให้ frontend ได้ใช้ต่อ
+    return NextResponse.json(result);
   } catch (err: unknown) {
-    // ✅ แปลง err ก่อนใช้
     const error = err as Error;
     console.error("❌ Meeting API Error:", error);
 
