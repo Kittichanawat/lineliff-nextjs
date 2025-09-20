@@ -80,17 +80,41 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
     const loadingToast = toast.loading("⏳ กำลังส่งข้อมูล...");
 
     try {
-      // ✅ ส่ง event ไป n8n ผ่าน API meeting
+      // helper แปลงเวลา
+      const formatDateTime = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toISOString().replace("Z", "+07:00");
+      };
+
+      // ✅ เลือกผู้เข้าร่วม
+      const selectedProfiles = profiles.filter((p) =>
+        form.participants.includes(p.userId)
+      );
+
+      // ✅ calendar event object
+      const calendarEvent = {
+        summary: form.title,
+        description: form.description,
+        start: {
+          dateTime: formatDateTime(form.startTime),
+          timeZone: "Asia/Bangkok",
+        },
+        end: {
+          dateTime: formatDateTime(form.endTime),
+          timeZone: "Asia/Bangkok",
+        },
+        attendees: selectedProfiles.map((p) => ({
+          displayName: `@${p.displayName}`,
+          email: p.email,
+        })),
+        groupId,
+      };
+
+      // ✅ ส่งไป API /api/meeting → n8n → Google Calendar
       const res = await fetch("/api/meeting", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          summary: form.title,
-          description: form.description,
-          start: form.startTime,
-          end: form.endTime,
-          meetingLink: form.meetingLink,
-        }),
+        body: JSON.stringify({ calendarEvent }),
       });
 
       const result = await res.json();
@@ -99,16 +123,14 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
         throw new Error(result.error || "Meeting API failed");
       }
 
-      // ✅ เมื่อ n8n ตอบกลับ → ส่งไป api/line-message
+      // ✅ เมื่อสร้าง Calendar สำเร็จ → ส่ง flex message ไปยัง groupId
       const lineRes = await fetch("/api/line-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           groupId,
-          calendarData: result, // response จาก n8n
-          participants: profiles.filter((p) =>
-            form.participants.includes(p.userId)
-          ).map((p) => `@${p.displayName}`),
+          calendarData: result, // response จาก n8n (มี calendarLink, summary, start, end ฯลฯ)
+          participants: selectedProfiles.map((p) => `@${p.displayName}`),
           meetingLink: form.meetingLink,
         }),
       });
@@ -116,7 +138,9 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
       const lineResult = await lineRes.json();
 
       if (lineRes.ok && lineResult.success) {
-        toast.success("✅ ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", { id: loadingToast });
+        toast.success("✅ ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", {
+          id: loadingToast,
+        });
       } else {
         throw new Error(lineResult.error || "LINE API failed");
       }
@@ -163,11 +187,11 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="form-section-title">เวลาเริ่ม</label>
-              <input type="datetime-local" {...register("startTime")} className="form-input" />
+              <input type="datetime-local" {...register("startTime", { required: "กรุณาเลือกเวลาเริ่ม" })} className="form-input" />
             </div>
             <div>
               <label className="form-section-title">เวลาสิ้นสุด</label>
-              <input type="datetime-local" {...register("endTime")} className="form-input" />
+              <input type="datetime-local" {...register("endTime", { required: "กรุณาเลือกเวลาสิ้นสุด" })} className="form-input" />
             </div>
           </div>
 
