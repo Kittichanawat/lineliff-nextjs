@@ -5,12 +5,22 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { groupId, calendarData, participants, meetingLink } = body;
 
+    if (!groupId || !calendarData) {
+      throw new Error("Missing groupId or calendarData");
+    }
+
+    const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!accessToken) {
+      throw new Error("LINE_CHANNEL_ACCESS_TOKEN is missing");
+    }
+
+    // ✅ Flex Message
     const flexMessage = {
       to: groupId,
       messages: [
         {
           type: "flex",
-          altText: calendarData.summary,
+          altText: calendarData.summary || "📅 Meeting",
           contents: {
             type: "bubble",
             size: "giga",
@@ -19,60 +29,34 @@ export async function POST(req: Request) {
               layout: "vertical",
               contents: [
                 {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "box",
-                      layout: "vertical",
-                      contents: [
-                        {
-                          type: "text",
-                          text: calendarData.summary,
-                          size: "xl",
-                          weight: "bold",
-                          color: "#333333",
-                          wrap: true,
-                        },
-                        {
-                          type: "text",
-                          text: `${calendarData.startDate} | ${calendarData.startTime} - ${calendarData.endTime}`,
-                          size: "md",
-                          color: "#555555",
-                          margin: "sm",
-                        },
-                        {
-                          type: "text",
-                          text: calendarData.description,
-                          size: "sm",
-                          color: "#aaaaaa",
-                          wrap: true,
-                        },
-                      ],
-                      flex: 2,
-                    },
-                  ],
-                  paddingAll: "20px",
-                  backgroundColor: "#D8F3E4",
-                  cornerRadius: "md",
+                  type: "text",
+                  text: calendarData.summary,
+                  size: "xl",
+                  weight: "bold",
+                  wrap: true,
                 },
                 {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    { type: "text", text: "ผู้เข้าร่วมประชุม", weight: "bold", align: "center", margin: "lg" },
-                    {
-                      type: "box",
-                      layout: "vertical",
-                      contents: participants.map((p: string) => ({
-                        type: "text",
-                        text: p,
-                        size: "md",
-                        color: "#555555",
-                      })),
-                    },
-                  ],
-                  paddingAll: "20px",
+                  type: "text",
+                  text: calendarData.description || "ไม่มีรายละเอียด",
+                  size: "sm",
+                  color: "#555555",
+                  wrap: true,
+                  margin: "md",
+                },
+                {
+                  type: "text",
+                  text: `⏰ ${calendarData.startDate} ${calendarData.startTime} - ${calendarData.endDate} ${calendarData.endTime}`,
+                  size: "sm",
+                  color: "#333333",
+                  margin: "md",
+                },
+                {
+                  type: "text",
+                  text: `👥 ${participants.join(", ")}`,
+                  size: "sm",
+                  color: "#111111",
+                  wrap: true,
+                  margin: "md",
                 },
               ],
             },
@@ -83,25 +67,28 @@ export async function POST(req: Request) {
                 meetingLink
                   ? {
                       type: "button",
-                      action: { type: "uri", label: "เข้าร่วมประชุม", uri: meetingLink },
                       style: "primary",
-                      color: "#76D7C4",
+                      color: "#6C63FF",
+                      action: {
+                        type: "uri",
+                        label: "เข้าร่วมประชุม",
+                        uri: meetingLink,
+                      },
                     }
                   : {
                       type: "text",
                       text: "❌ ไม่มีลิงก์ประชุม",
-                      align: "center",
                       color: "#999999",
+                      align: "center",
                     },
                 {
                   type: "button",
+                  style: "link",
                   action: {
                     type: "uri",
-                    label: "เปิดใน Google Calendar",
+                    label: "📅 เปิดใน Google Calendar",
                     uri: calendarData.calendarLink,
                   },
-                  style: "link",
-                  color: "#6C63FF",
                 },
               ],
             },
@@ -110,24 +97,25 @@ export async function POST(req: Request) {
       ],
     };
 
-    // 🔹 ส่งไปยัง LINE Messaging API
+    // ✅ Call LINE Messaging API
     const res = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(flexMessage),
     });
 
     if (!res.ok) {
-      throw new Error(`LINE API error: ${res.status}`);
+      const text = await res.text();
+      throw new Error(`LINE API error: ${res.status} - ${text}`);
     }
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const error = err as Error;
-    console.error("❌ LINE Message Error:", error);
+    console.error("❌ LINE Message Error:", error.message);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
