@@ -158,7 +158,7 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
   return (
     <main className="page-shell">
       <div className="glass-card card-pad animate-in">
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster position="top-center" reverseOrder={false} />
         <h1 className="hero-title flex items-center gap-2">
           <i className="fa-solid fa-people-group text-purple-400" />
           สร้างการประชุมใหม่
