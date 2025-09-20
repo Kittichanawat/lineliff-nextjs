@@ -28,6 +28,7 @@ export async function POST(req: Request) {
                 type: "box",
                 layout: "vertical",
                 contents: [
+                  // 🔹 หัวข้อ + เวลา + โลโก้
                   {
                     type: "box",
                     layout: "horizontal",
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
                     backgroundColor: "#D8F3E4",
                     cornerRadius: "md",
                   },
+      
+                  // 🔹 ผู้เข้าร่วมประชุม
                   {
                     type: "box",
                     layout: "vertical",
@@ -102,16 +105,24 @@ export async function POST(req: Request) {
                         margin: "md",
                         color: "#eeeeee",
                       },
-                      {
-                        type: "text",
-                        text: participants.length > 0
-                          ? `👥 ${participants.join(", ")}`
-                          : "👥 ไม่มีผู้เข้าร่วม",
-                        size: "sm",
-                        color: "#111111",
-                        wrap: true,
-                        margin: "md",
-                      },
+                      ...(participants.length > 0
+                        ? participants.map((name: string) => ({
+                            type: "text",
+                            text: name,
+                            size: "md",
+                            color: "#555555",
+                            margin: "sm",
+                            wrap: true,
+                          }))
+                        : [
+                            {
+                              type: "text",
+                              text: "❌ ไม่มีผู้เข้าร่วม",
+                              size: "sm",
+                              color: "#999999",
+                              align: "center",
+                            },
+                          ]),
                     ],
                     paddingAll: "20px",
                     paddingTop: "0px",
@@ -119,6 +130,8 @@ export async function POST(req: Request) {
                 ],
                 spacing: "lg",
               },
+      
+              // 🔹 Footer ปุ่มกด
               footer: {
                 type: "box",
                 layout: "vertical",
