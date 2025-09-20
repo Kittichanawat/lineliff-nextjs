@@ -29,36 +29,95 @@ export async function POST(req: Request) {
                 layout: "vertical",
                 contents: [
                   {
-                    type: "text",
-                    text: calendarData.summary || "📌 ไม่มีหัวข้อ",
-                    size: "xl",
-                    weight: "bold",
-                    wrap: true,
+                    type: "box",
+                    layout: "horizontal",
+                    contents: [
+                      {
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                          {
+                            type: "text",
+                            text: calendarData.summary || "📌 ไม่มีหัวข้อ",
+                            size: "xl",
+                            weight: "bold",
+                            color: "#333333",
+                            wrap: true,
+                          },
+                          {
+                            type: "text",
+                            text: `${calendarData.startDate || "-"} | ${calendarData.startTime || ""} - ${calendarData.endTime || ""}`,
+                            size: "xxl",
+                            weight: "bold",
+                            color: "#333333",
+                            margin: "sm",
+                            adjustMode: "shrink-to-fit",
+                          },
+                          {
+                            type: "text",
+                            text: calendarData.description || "ไม่มีรายละเอียด",
+                            size: "sm",
+                            color: "#aaaaaa",
+                            margin: "md",
+                            wrap: true,
+                          },
+                        ],
+                        flex: 2,
+                      },
+                      {
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                          {
+                            type: "image",
+                            url: "https://raw.githubusercontent.com/Kittichanawat/LineOA/refs/heads/main/codelabss.png",
+                            size: "full",
+                            aspectRatio: "1:1",
+                            aspectMode: "fit",
+                          },
+                        ],
+                        flex: 1,
+                        paddingAll: "10px",
+                      },
+                    ],
+                    paddingAll: "20px",
+                    backgroundColor: "#D8F3E4",
+                    cornerRadius: "md",
                   },
                   {
-                    type: "text",
-                    text: calendarData.description || "ไม่มีรายละเอียด",
-                    size: "sm",
-                    color: "#555555",
-                    wrap: true,
-                    margin: "md",
-                  },
-                  {
-                    type: "text",
-                    text: `⏰ ${calendarData.startDate || "-"} ${calendarData.startTime || ""} - ${calendarData.endDate || "-"} ${calendarData.endTime || ""}`,
-                    size: "sm",
-                    color: "#333333",
-                    margin: "md",
-                  },
-                  {
-                    type: "text",
-                    text: participants.length > 0 ? `👥 ${participants.join(", ")}` : "👥 ไม่มีผู้เข้าร่วม",
-                    size: "sm",
-                    color: "#111111",
-                    wrap: true,
-                    margin: "md",
+                    type: "box",
+                    layout: "vertical",
+                    contents: [
+                      {
+                        type: "text",
+                        text: "ผู้เข้าร่วมประชุม",
+                        weight: "bold",
+                        size: "md",
+                        align: "center",
+                        margin: "lg",
+                        color: "#555555",
+                      },
+                      {
+                        type: "separator",
+                        margin: "md",
+                        color: "#eeeeee",
+                      },
+                      {
+                        type: "text",
+                        text: participants.length > 0
+                          ? `👥 ${participants.join(", ")}`
+                          : "👥 ไม่มีผู้เข้าร่วม",
+                        size: "sm",
+                        color: "#111111",
+                        wrap: true,
+                        margin: "md",
+                      },
+                    ],
+                    paddingAll: "20px",
+                    paddingTop: "0px",
                   },
                 ],
+                spacing: "lg",
               },
               footer: {
                 type: "box",
@@ -67,13 +126,14 @@ export async function POST(req: Request) {
                   meetingLink
                     ? {
                         type: "button",
-                        style: "primary",
-                        color: "#6C63FF",
                         action: {
                           type: "uri",
-                          label: "เข้าร่วมประชุม",
+                          label: "เข้าร่วมประชุม (Meet)",
                           uri: meetingLink,
                         },
+                        style: "primary",
+                        color: "#76D7C4",
+                        height: "sm",
                       }
                     : {
                         type: "text",
@@ -83,19 +143,27 @@ export async function POST(req: Request) {
                       },
                   {
                     type: "button",
-                    style: "link",
                     action: {
                       type: "uri",
-                      label: "📅 เปิดใน Google Calendar",
+                      label: "เปิดใน Google Calendar",
                       uri: calendarData.calendarLink || "https://calendar.google.com",
                     },
+                    style: "link",
+                    height: "sm",
+                    color: "#6C63FF",
                   },
                 ],
+                paddingAll: "20px",
+                paddingTop: "10px",
+                spacing: "sm",
               },
             },
           },
         ],
       };
+      
+      
+      
       
 
     // ✅ Call LINE Messaging API
