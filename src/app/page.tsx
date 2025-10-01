@@ -144,8 +144,21 @@ const onSubmit = async (data: FormData) => {
 
   try {
     setIsLoading(true);
-    const payload = { ...data, userId, displayName, captchaToken };
+
+    // ✅ เรียก reCAPTCHA invisible ทุกครั้ง
+    const token = await recaptchaRef.current?.executeAsync();
+    recaptchaRef.current?.reset(); // reset เพื่อให้พร้อมใช้อีกครั้ง
+
+    if (!token) {
+      toast.error("ไม่สามารถยืนยัน reCAPTCHA ได้ กรุณาลองใหม่");
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ แนบ token ไปที่ payload
+    const payload = { ...data, userId, displayName, captchaToken: token };
     const res = await axios.post("/api/send-otp", payload);
+
     if (res.data?.success) {
       setOtp("");
       setIsOtpOpen(true);
@@ -160,6 +173,7 @@ const onSubmit = async (data: FormData) => {
     setIsLoading(false);
   }
 };
+
 
 
 const handleResendOtp = async () => {
@@ -357,7 +371,7 @@ const handleResendOtp = async () => {
   {/* ✅ Submit Button */}
   <button
     type="submit"
-    disabled={isLoading || !captchaToken} // ปิดปุ่มถ้าไม่มี token
+    disabled={isLoading } // ปิดปุ่มถ้าไม่มี token
     className="btn-gradient mt-3 disabled:opacity-60 disabled:cursor-not-allowed"
   >
     {isLoading ? (
