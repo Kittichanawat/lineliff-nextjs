@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@line/liff": "^2.27.1",
+    "@prisma/client": "^6.16.2",
     "@supabase/supabase-js": "^2.57.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
@@ -35,6 +36,7 @@
     "@types/react-google-recaptcha": "^2.1.9",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
+    "prisma": "^6.16.2",
     "tailwindcss": "^4.1.13",
     "typescript": "^5"
   }

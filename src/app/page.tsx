@@ -9,7 +9,7 @@ import Modal from "@/components/modal";
 import { supabase } from "@/lib/supabaseClient";
 import liff from "@line/liff";
 import ReCAPTCHA from "react-google-recaptcha";
-
+import { useRef } from "react";
 
 type Position = { p_id: string; p_name: string };
 type Department = { dep_id: string; dep_name: string; positions: Position[] };
@@ -33,6 +33,8 @@ type FormData = {
 export default function RegisterForm() {
   // ---------- Branding ----------
   const LOGO_SRC = "/logo.webp";
+
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
 
   // ---------- state ----------
@@ -160,27 +162,40 @@ const onSubmit = async (data: FormData) => {
 };
 
 
-  const handleResendOtp = async () => {
-    if (otpSeconds > 0 || resendLoading) return;
-    try {
-      setResendLoading(true);
-      // ใช้ข้อมูลเต็มจากฟอร์ม
-      const payload = { ...watch(), userId, displayName };
-      const res = await axios.post("/api/send-otp", payload);
-  
-      if (res.data?.success) {
-        setOtp("");
-        startOtpTimer(); // เริ่มนับถอยหลังใหม่
-        toast.success("ส่งรหัสใหม่แล้ว กรุณาตรวจสอบ SMS");
-      } else {
-        toast.error(res.data?.message ?? "ส่งรหัสใหม่ไม่ได้");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการส่งรหัสใหม่");
-    } finally {
+const handleResendOtp = async () => {
+  if (otpSeconds > 0 || resendLoading) return;
+  try {
+    setResendLoading(true);
+
+    // ✅ Refresh captcha ก่อน
+    recaptchaRef.current?.reset();
+    const newToken = await recaptchaRef.current?.executeAsync();
+    setCaptchaToken(newToken ?? "");
+
+    if (!newToken) {
+      toast.error("โปรดทำ reCAPTCHA อีกครั้ง");
       setResendLoading(false);
+      return;
     }
-  };
+
+    // ✅ ยิง API พร้อม token ใหม่
+    const payload = { ...watch(), userId, displayName, captchaToken: newToken };
+    const res = await axios.post("/api/send-otp", payload);
+
+    if (res.data?.success) {
+      setOtp("");
+      startOtpTimer();
+      toast.success("ส่งรหัสใหม่แล้ว กรุณาตรวจสอบอีเมล");
+    } else {
+      toast.error(res.data?.message ?? "ส่งรหัสใหม่ไม่ได้");
+    }
+  } catch {
+    toast.error("เกิดข้อผิดพลาดในการส่งรหัสใหม่");
+  } finally {
+    setResendLoading(false);
+  }
+};
+
   
   const handleVerifyOtp = async () => {
     if (isVerifying) return;
@@ -207,7 +222,7 @@ const onSubmit = async (data: FormData) => {
           toast.success("บันทึกข้อมูลสำเร็จ");
           setIsOtpOpen(false);
         } else if (saveRes.data?.message === "duplicate") {
-          toast.error("มีข้อมูลอยู่ในระบบแล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+          toast.error("บัญชี Line ของท่าน มีข้อมูลอยู่ในระบบแล้ว กรุณาอย่าลงทะเบียนซ้ำ");
           setIsOtpOpen(false);
         } else {
           toast.error(saveRes.data?.message ?? "บันทึกข้อมูลไม่สำเร็จ");
@@ -326,9 +341,10 @@ const onSubmit = async (data: FormData) => {
           <div className="md:col-span-2">
   {/* ✅ Google reCAPTCHA */}
   <ReCAPTCHA
-    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-    onChange={(token) => setCaptchaToken(token ?? "")}
-  />
+  ref={recaptchaRef}
+  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+  onChange={(token) => setCaptchaToken(token ?? "")}
+/>
 
   {/* ✅ Submit Button */}
   <button
@@ -391,7 +407,7 @@ const onSubmit = async (data: FormData) => {
       type="text"
       value={otp}
       onChange={(e) => setOtp(e.target.value)}
-      maxLength={6}
+      maxLength={7}
       placeholder="______"
       className="otp-input"
       required
@@ -414,15 +430,15 @@ const onSubmit = async (data: FormData) => {
       onClick={handleResendOtp}
       disabled={otpSeconds > 0 || resendLoading}
       className="btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
-      title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสใหม่"}
+      title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสอีกครั้ง"}
     >
       <i className="fa-solid fa-rotate-right mr-2" />
-      {resendLoading ? "กำลังส่ง..." : "ส่งรหัสใหม่"}
+      {resendLoading ? "กำลังส่ง..." : "ส่งรหัสอีกครั้ง"}
     </button>
   </div>
 </div>
 
-ี<div>
+<div>
     {/* โชว์ว่า OTP ถูกส่งไปที่อีเมลอะไร */}
 <p className="text-xs text-gray-500 dark:text-gray-400">
   <i className="fa-solid fa-envelope mr-1 text-blue-500" />
