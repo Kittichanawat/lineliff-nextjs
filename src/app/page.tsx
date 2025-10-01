@@ -163,20 +163,24 @@ const onSubmit = async (data: FormData) => {
 
 
 const handleResendOtp = async () => {
-  if (otpSeconds > 0 || resendLoading) return;
+  if (otpSeconds > 0 || resendLoading) return; // กันกดซ้ำตอนยังไม่หมดเวลา
   try {
     setResendLoading(true);
 
     // ✅ Refresh captcha ก่อน
     recaptchaRef.current?.reset();
     const newToken = await recaptchaRef.current?.executeAsync();
-    setCaptchaToken(newToken ?? "");
+
+    console.log("🔑 new reCAPTCHA token:", newToken);
 
     if (!newToken) {
-      toast.error("โปรดทำ reCAPTCHA อีกครั้ง");
+      toast.error("reCAPTCHA ไม่ได้ค่า token กรุณาลองใหม่อีกครั้ง");
       setResendLoading(false);
       return;
     }
+
+    // ✅ อัปเดต token state
+    setCaptchaToken(newToken);
 
     // ✅ ยิง API พร้อม token ใหม่
     const payload = { ...watch(), userId, displayName, captchaToken: newToken };
@@ -184,17 +188,20 @@ const handleResendOtp = async () => {
 
     if (res.data?.success) {
       setOtp("");
-      startOtpTimer();
+      startOtpTimer(); // เริ่มนับถอยหลังใหม่
       toast.success("ส่งรหัสใหม่แล้ว กรุณาตรวจสอบอีเมล");
     } else {
       toast.error(res.data?.message ?? "ส่งรหัสใหม่ไม่ได้");
     }
-  } catch {
+  } catch (err) {
+    console.error("❌ Resend OTP error:", err);
     toast.error("เกิดข้อผิดพลาดในการส่งรหัสใหม่");
   } finally {
     setResendLoading(false);
   }
 };
+
+
 
   
   const handleVerifyOtp = async () => {
@@ -343,6 +350,7 @@ const handleResendOtp = async () => {
   <ReCAPTCHA
   ref={recaptchaRef}
   sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+  size="invisible"   // ✅ ต้องมีถ้าใช้ executeAsync()
   onChange={(token) => setCaptchaToken(token ?? "")}
 />
 
