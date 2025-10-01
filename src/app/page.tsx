@@ -155,7 +155,7 @@ const onSubmit = async (data: FormData) => {
       toast.error(res.data?.message ?? "ส่ง OTP ไม่ได้");
     }
   } catch (err) {
-    toast.error("เกิดข้อผิดพลาดในการส่ง OTP");
+    toast.error(err instanceof Error ? err.message : String(err));
   } finally {
     setIsLoading(false);
   }
@@ -234,7 +234,7 @@ const handleResendOtp = async () => {
         toast.error("OTP ไม่ถูกต้อง");
       }
     } catch (err) {
-      toast.error("เกิดข้อผิดพลาดในการยืนยัน OTP");
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setIsVerifying(false);
     }
