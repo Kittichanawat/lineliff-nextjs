@@ -430,10 +430,10 @@ const handleResendOtp = async () => {
       onClick={handleResendOtp}
       disabled={otpSeconds > 0 || resendLoading}
       className="btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
-      title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสอีกครั้ง"}
+      title={otpSeconds > 0 ? "กดได้เมื่อหมดเวลา" : "ส่งรหัสใหม่"}
     >
       <i className="fa-solid fa-rotate-right mr-2" />
-      {resendLoading ? "กำลังส่ง..." : "ส่งรหัสอีกครั้ง"}
+      {resendLoading ? "กำลังส่ง..." : "ส่งรหัสใหม่"}
     </button>
   </div>
 </div>
