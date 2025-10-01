@@ -364,9 +364,11 @@ const handleResendOtp = async () => {
   <ReCAPTCHA
   ref={recaptchaRef}
   sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-  size="invisible"   // ✅ ต้องมีถ้าใช้ executeAsync()
+  size="invisible"
+  badge="inline"     // ✅ Badge จะฝังในฟอร์ม
   onChange={(token) => setCaptchaToken(token ?? "")}
 />
+
 
   {/* ✅ Submit Button */}
   <button
