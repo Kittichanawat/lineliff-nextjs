@@ -43,7 +43,7 @@ function getAxiosMessage(error: unknown, fallback: string): string {
 export default function RegisterForm() {
   // ---------- Branding ----------
   const LOGO_SRC = "/logo.webp";
-  const LIFF_ID = "2007772610-2rjPV8NGw";
+  const LIFF_ID = "2007772610-2rjPV8NG";
 
   // ---------- refs ----------
   const recaptchaRef = useRef<ReCAPTCHA>(null);
