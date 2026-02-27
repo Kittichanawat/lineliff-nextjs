@@ -303,7 +303,16 @@ export async function POST(req: Request) {
     const ins = await supabaseAdmin.from("user").insert(userPayload);
     if (ins.error) {
       console.error("user insert error:", ins.error);
-      return respondError(req, 500, "supabase_insert_failed", ins.error);
+    
+      return NextResponse.json(
+        {
+          message: ins.error.message,   // 👈 ใช้ error จริง
+          code: ins.error.code,
+          details: ins.error.details,
+          hint: ins.error.hint,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ message: "success" } satisfies VerifyResp, { status: 200 });
