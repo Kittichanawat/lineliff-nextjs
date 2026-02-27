@@ -288,7 +288,7 @@ export async function POST(req: Request) {
 
     // insert user
     const userPayload = {
-      fname: form.flname,
+      flname: form.flname,
       nname: form.nname,
       dob: form.dob,
       position: Number(form.position),
