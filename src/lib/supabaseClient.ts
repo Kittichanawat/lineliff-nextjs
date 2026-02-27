@@ -1,6 +1,12 @@
+// src/lib/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_KEY as string;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anon = process.env.NEXT_PUBLIC_SUPABASE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (!url) throw new Error("Missing env: NEXT_PUBLIC_SUPABASE_URL");
+if (!anon) throw new Error("Missing env: NEXT_PUBLIC_SUPABASE_KEY");
+
+export const supabase = createClient(url, anon, {
+  auth: { persistSession: false },
+});
