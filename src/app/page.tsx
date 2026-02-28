@@ -200,6 +200,9 @@ export default function RegisterForm() {
       email,
       captchaToken,
     });
+    console.log("idToken state:", idToken);
+console.log("token to send:", token);
+console.log("same?", token === idToken);
   };
 
   const onSubmit = async (data: FormData) => {
