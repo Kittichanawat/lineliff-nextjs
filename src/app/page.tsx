@@ -63,13 +63,16 @@ export default function RegisterForm() {
   // ---------- OTP modal ----------
   const [isOtpOpen, setIsOtpOpen] = useState(false);
   const [otp, setOtp] = useState("");
-  const OTP_TTL = 60;
+  const OTP_TTL = 5 * 60;
   const [otpSeconds, setOtpSeconds] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
   const startOtpTimer = (sec = OTP_TTL) => setOtpSeconds(sec);
-  const formatTime = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  const formatTime = (s: number) => {
+    const minutes = Math.floor(s / 60);
+    const seconds = s % 60;
+    return `${minutes}.${String(seconds).padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     if (!isOtpOpen || otpSeconds <= 0) return;
@@ -432,6 +435,7 @@ export default function RegisterForm() {
         onClose={() => {
           // ปิดไม่ได้ด้วยการกด backdrop/esc (กันหลุด flow)
           // ถ้าต้องการให้ปิดได้ ให้เปลี่ยนไป setIsOtpOpen(false)
+          setIsOtpOpen(false)
         }}
         title="ยืนยันรหัส OTP"
         closeOnBackdrop={false}
