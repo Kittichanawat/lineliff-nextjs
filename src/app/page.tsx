@@ -9,6 +9,7 @@ import axios from "axios";
 import Modal from "@/components/modal";
 import liff from "@line/liff";
 import ReCAPTCHA from "react-google-recaptcha";
+import { decodeJwt } from "jose";
 
 type ApiErrorBody = { message?: string };
 
@@ -38,6 +39,34 @@ function getAxiosMessage(error: unknown, fallback: string): string {
 
   if (error instanceof Error && error.message.trim().length > 0) return error.message;
   return fallback;
+}
+
+function isIdTokenExpired(token: string) {
+  try {
+    const { exp } = decodeJwt(token);
+    if (!exp) return false;
+    return Date.now() >= exp * 1000;
+  } catch {
+    return true;
+  }
+}
+
+
+
+async function getFreshIdToken(): Promise<string> {
+  // ถ้ายังไม่ init หรือยังไม่ login
+  if (!liff.isLoggedIn()) {
+    liff.login({ redirectUri: window.location.href });
+    return "";
+  }
+
+  // ลองดึง token ล่าสุดก่อน
+  const t = liff.getIDToken();
+  if (t && t.length > 10) return t;
+
+  // ถ้าไม่ได้จริง ๆ ให้ login ใหม่ (ใน in-app จะกลับมาให้เอง)
+  liff.login({ redirectUri: window.location.href });
+  return "";
 }
 
 export default function RegisterForm() {
@@ -162,8 +191,19 @@ export default function RegisterForm() {
   };
 
   // ---------- Submit (request OTP) ----------
+  const callSendOtp = async (token: string, email: string) => {
+    const captchaToken = await execCaptcha();
+    if (!captchaToken) throw new Error("captcha_failed");
+
+    return axios.post<OtpRequestResponse>("/api/send-otp", {
+      idToken: token,
+      email,
+      captchaToken,
+    });
+  };
+
   const onSubmit = async (data: FormData) => {
-    if (!isLiffReady || idToken.length === 0) {
+    if (!isLiffReady) {
       toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
       return;
     }
@@ -171,19 +211,30 @@ export default function RegisterForm() {
     try {
       setIsLoading(true);
 
-      const captchaToken = await execCaptcha();
-      if (captchaToken.length === 0) {
-        toast.error("ยืนยัน reCAPTCHA ไม่สำเร็จ กรุณาลองใหม่");
-        return;
+      // 1) ใช้ token ปัจจุบันก่อน
+      let token = idToken;
+      if (!token || isIdTokenExpired(token)) {
+        token = await getFreshIdToken();
+        if (!token) return;
+        setIdToken(token);
       }
 
-      const res = await axios.post<OtpRequestResponse>("/api/send-otp", {
-        idToken,
-        email: data.email,
-        captchaToken,
-      });
+      let res = await callSendOtp(token, data.email);
 
+      // 2) ถ้า token invalid → รีเฟรช แล้ว retry 1 ครั้ง
+      if (res.data?.success === false && res.data?.message === "line_token_invalid") {
+        toast("LINE session หมดอายุ กำลังขอ token ใหม่...", { icon: "🔄" });
+
+        const newToken = await getFreshIdToken();
+        if (!newToken) return; // redirect ไป login แล้ว
+        setIdToken(newToken);
+
+        res = await callSendOtp(newToken, data.email);
+      }
+
+      // handle response
       if (res.data?.success === false) {
+        // กรณี rate limit / duplicate / อื่น ๆ
         toast.error(res.data.message ?? "ส่ง OTP ไม่สำเร็จ");
         return;
       }
@@ -193,16 +244,28 @@ export default function RegisterForm() {
       startOtpTimer();
       toast.success("ส่ง OTP ไปยังอีเมลแล้ว กรุณาตรวจสอบกล่องจดหมาย");
     } catch (e: unknown) {
-      toast.error(getAxiosMessage(e, "ส่ง OTP ไม่สำเร็จ"));
+      if (e instanceof Error && e.message === "captcha_failed") {
+        toast.error("ยืนยัน reCAPTCHA ไม่สำเร็จ กรุณาลองใหม่");
+      } else {
+        toast.error(getAxiosMessage(e, "ส่ง OTP ไม่สำเร็จ"));
+      }
     } finally {
       setIsLoading(false);
     }
   };
-
+  const ensureFreshIdToken = async (): Promise<string> => {
+    let token = idToken;
+    if (!token || isIdTokenExpired(token)) {
+      token = await getFreshIdToken();
+      if (!token) return "";
+      setIdToken(token);
+    }
+    return token;
+  };
   const handleResendOtp = async () => {
     if (otpSeconds > 0 || resendLoading) return;
 
-    if (!isLiffReady || idToken.length === 0) {
+    if (!isLiffReady ) {
       toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
       return;
     }
@@ -222,8 +285,10 @@ export default function RegisterForm() {
         return;
       }
 
+      const token = await ensureFreshIdToken();
+      if (!token) return;
       const res = await axios.post<OtpRequestResponse>("/api/send-otp", {
-        idToken,
+        idToken: token,  
         email,
         captchaToken,
       });
@@ -256,8 +321,10 @@ export default function RegisterForm() {
     try {
       setIsVerifying(true);
 
+      const token = await ensureFreshIdToken();
+      if (!token) return;
       const res = await axios.post<RegisterVerifyResponse>("/api/verify-otp", {
-        idToken,
+        idToken: token,
         otp,
         form,
       });
