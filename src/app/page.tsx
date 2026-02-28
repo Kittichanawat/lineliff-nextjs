@@ -200,9 +200,7 @@ export default function RegisterForm() {
       email,
       captchaToken,
     });
-    console.log("idToken state:", idToken);
-console.log("token to send:", token);
-console.log("same?", token === idToken);
+    
   };
 
   const onSubmit = async (data: FormData) => {
@@ -221,7 +219,9 @@ console.log("same?", token === idToken);
         if (!token) return;
         setIdToken(token);
       }
-
+      console.log("idToken state:", idToken);
+      console.log("token to send:", token);
+      console.log("same?", token === idToken);
       let res = await callSendOtp(token, data.email);
 
       // 2) ถ้า token invalid → รีเฟรช แล้ว retry 1 ครั้ง
@@ -255,6 +255,7 @@ console.log("same?", token === idToken);
     } finally {
       setIsLoading(false);
     }
+    
   };
   const ensureFreshIdToken = async (): Promise<string> => {
     let token = idToken;
