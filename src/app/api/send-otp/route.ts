@@ -82,7 +82,7 @@ async function consumeOr429(limiter: RateLimiterAbstract, key: string) {
     const ms = isRateLimitRej(e) ? e.msBeforeNext : 1000;
     const retryAfter = Math.ceil(ms / 1000);
     return NextResponse.json(
-      {  message: "rate_limited", }  ,
+      { success: false, message: "rate_limited", retryAfter } satisfies ApiResp,
       { status: 429, headers: { "Retry-After": String(retryAfter) } }
     );
   }
