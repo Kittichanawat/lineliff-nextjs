@@ -64,26 +64,17 @@ const limiterIp = makeLimiter(10, 10 * 60); // 10 req / 10 min / ip
 const limiterEmail = makeLimiter(3, 10 * 60); // 3 req / 10 min / email
 const limiterCooldown = makeLimiter(1, 60); // 1 req / 60 sec / email
 
-type RateLimitRej = { msBeforeNext: number };
-function isRateLimitRej(e: unknown): e is RateLimitRej {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    "msBeforeNext" in e &&
-    typeof (e as { msBeforeNext?: unknown }).msBeforeNext === "number"
-  );
-}
+
+
 
 async function consumeOr429(limiter: RateLimiterAbstract, key: string) {
   try {
     await limiter.consume(key);
     return null;
-  } catch (e: unknown) {
-    const ms = isRateLimitRej(e) ? e.msBeforeNext : 1000;
-    const retryAfter = Math.ceil(ms / 1000);
+  } catch {
     return NextResponse.json(
       { success: false, message: "rate_limited" } satisfies ApiResp,
-      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      { status: 429 }
     );
   }
 }
