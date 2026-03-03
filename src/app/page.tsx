@@ -302,7 +302,7 @@ export default function RegisterForm() {
       });
 
       if (res.data?.success === false) {
-        toast.error(res.data.message ?? "ส่งรหัสใหม่ไม่สำเร็จ");
+        toast.error( "ส่งรหัสใหม่ไม่สำเร็จ");
         return;
       }
 
