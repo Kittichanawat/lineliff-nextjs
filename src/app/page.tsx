@@ -53,18 +53,14 @@ function isIdTokenExpired(token: string) {
 
 
 
-async function getFreshIdToken(): Promise<string> {
-  // ถ้ายังไม่ init หรือยังไม่ login
-  if (!liff.isLoggedIn()) {
-    liff.login({ redirectUri: window.location.href });
-    return "";
-  }
+async function forceRelogin(): Promise<string> {
+  try {
+    if (liff.isLoggedIn()) {
+      liff.logout();   // เคลียร์ session ใน LIFF
+    }
+  } catch {}
 
-  // ลองดึง token ล่าสุดก่อน
-  const t = liff.getIDToken();
-  if (t && t.length > 10) return t;
-
-  // ถ้าไม่ได้จริง ๆ ให้ login ใหม่ (ใน in-app จะกลับมาให้เอง)
+  // redirect ไป login ใหม่
   liff.login({ redirectUri: window.location.href });
   return "";
 }
@@ -215,7 +211,7 @@ export default function RegisterForm() {
       // 1) ใช้ token ปัจจุบันก่อน
       let token = idToken;
       if (!token || isIdTokenExpired(token)) {
-        token = await getFreshIdToken();
+        token = await forceRelogin();
         if (!token) return;
         setIdToken(token);
       }
@@ -228,7 +224,7 @@ export default function RegisterForm() {
       if (res.data?.success === false && res.data?.message === "line_token_invalid") {
         toast("LINE session หมดอายุ กำลังขอ token ใหม่...", { icon: "🔄" });
 
-        const newToken = await getFreshIdToken();
+        const newToken = await forceRelogin();
         if (!newToken) return; // redirect ไป login แล้ว
         setIdToken(newToken);
 
