@@ -234,7 +234,7 @@ export default function RegisterForm() {
       // handle response
       if (res.data?.success === false) {
         // กรณี rate limit / duplicate / อื่น ๆ
-        toast.error(res.data.message ?? "ส่ง OTP ไม่สำเร็จ");
+        toast.error("ส่ง OTP ไม่สำเร็จ");
         return;
       }
       if (res.data?.message === "rate_limited") {
