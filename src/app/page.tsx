@@ -256,7 +256,7 @@ export default function RegisterForm() {
   const ensureFreshIdToken = async (): Promise<string> => {
     let token = idToken;
     if (!token || isIdTokenExpired(token)) {
-      token = await getFreshIdToken();
+      token = await forceRelogin();
       if (!token) return "";
       setIdToken(token);
     }
