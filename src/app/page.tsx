@@ -198,7 +198,18 @@ export default function RegisterForm() {
     });
     
   };
-
+const humanOtpMessage = (msg?: string) => {
+  switch (msg) {
+    case "duplicate":
+      return "บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
+    case "rate_limited":
+      return "มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
+    case "line_token_invalid":
+      return "LINE session หมดอายุ กำลังพาไป login ใหม่...";
+    default:
+      return "";
+  }
+};
   const onSubmit = async (data: FormData) => {
     if (!isLiffReady) {
       toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
@@ -219,9 +230,9 @@ export default function RegisterForm() {
       console.log("token to send:", token);
       console.log("same?", token === idToken);
       let res = await callSendOtp(token, data.email);
-
+      const msg = res.data?.message;
       // 2) ถ้า token invalid → รีเฟรช แล้ว retry 1 ครั้ง
-      if (res.data?.success === false && res.data?.message === "line_token_invalid") {
+      if (msg === "line_token_invalid") {
         toast("LINE session หมดอายุ กำลังขอ token ใหม่...", { icon: "🔄" });
 
         const newToken = await forceRelogin();
@@ -233,29 +244,48 @@ export default function RegisterForm() {
 
       // handle response
       
-      if (res.data?.message === "rate_limited" && res.data?.success === false) {
-        toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
+      if (msg === "duplicate" || msg === "rate_limited") {
+        toast.error(humanOtpMessage(msg));
         return;
       }
-      if (res.data?.message === "duplicate" && res.data?.success === false) {
-        toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+  
+      // ถ้าคุณยังใช้ success
+      if (res.data?.success === false) {
+        toast.error("ส่ง OTP ไม่สำเร็จ");
         return;
       }
-
+  
       setOtp("");
       setIsOtpOpen(true);
       startOtpTimer();
       toast.success("ส่ง OTP ไปยังอีเมลแล้ว กรุณาตรวจสอบกล่องจดหมาย");
     } catch (e: unknown) {
-      if (e instanceof Error && e.message === "captcha_failed") {
-        toast.error("ยืนยัน reCAPTCHA ไม่สำเร็จ กรุณาลองใหม่");
-      } else {
-        toast.error(getAxiosMessage(e, "ส่ง OTP ไม่สำเร็จ"));
+      // ✅ 429 จะเข้ามาที่นี่
+      if (axios.isAxiosError<ApiErrorBody>(e)) {
+        const status = e.response?.status;
+        const msg = e.response?.data?.message;
+  
+        if (status === 429 || msg === "rate_limited") {
+          toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
+          return;
+        }
+  
+        if (msg === "duplicate") {
+          toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+          return;
+        }
+  
+        if (status === 401 && msg === "line_token_invalid") {
+          toast("LINE session หมดอายุ กำลังพาไป login ใหม่...", { icon: "🔄" });
+          await forceRelogin();
+          return;
+        }
       }
+  
+      toast.error(getAxiosMessage(e, "ส่ง OTP ไม่สำเร็จ"));
     } finally {
       setIsLoading(false);
     }
-    
   };
   const ensureFreshIdToken = async (): Promise<string> => {
     let token = idToken;
