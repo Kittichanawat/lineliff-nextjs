@@ -357,7 +357,10 @@ export default function RegisterForm() {
         toast.error("ใส่รหัสผิดหลายครั้ง กรุณารอสักครู่แล้วลองใหม่");
         return;
       }
-
+      if (msg === "rate_limited") {
+        toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
+        return;
+      }
       toast.error(msg ?? "ยืนยันไม่สำเร็จ");
     } catch (e: unknown) {
       toast.error(getAxiosMessage(e, "ยืนยัน OTP ไม่สำเร็จ"));

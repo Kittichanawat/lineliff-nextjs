@@ -318,7 +318,7 @@ export async function POST(req: Request) {
       flname: form.flname,
       nname: form.nname,
       dob: form.dob,
-      position: dpId,           // ✅ ใส่ dp_id ไม่ใช่ p_id
+      position: dpId,           
       uline_id: line.sub,
       email,
       phone: form.phone,
@@ -331,7 +331,7 @@ export async function POST(req: Request) {
     
       return NextResponse.json(
         {
-          message: ins.error.message,   // 👈 ใช้ error จริง
+          message: ins.error.message,   
           code: ins.error.code,
           details: ins.error.details,
           hint: ins.error.hint,
