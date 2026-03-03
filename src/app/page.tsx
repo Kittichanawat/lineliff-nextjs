@@ -260,7 +260,7 @@ const humanOtpMessage = (msg?: string) => {
       startOtpTimer();
       toast.success("ส่ง OTP ไปยังอีเมลแล้ว กรุณาตรวจสอบกล่องจดหมาย");
     } catch (e: unknown) {
-      // ✅ 429 จะเข้ามาที่นี่
+      // 429 จะเข้ามาที่นี่
       if (axios.isAxiosError<ApiErrorBody>(e)) {
         const status = e.response?.status;
         const msg = e.response?.data?.message;
