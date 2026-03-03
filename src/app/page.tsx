@@ -213,10 +213,8 @@ export default function RegisterForm() {
   };
   const humanOtpMessage = (msg?: string) => {
     switch (msg) {
-      case "duplicate_line":
+      case "duplicate":
         return "บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
-      case "duplicate_email":
-        return "อีเมลนี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
       case "rate_limited":
         return "มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
       case "line_token_invalid":
@@ -259,7 +257,7 @@ export default function RegisterForm() {
 
       // handle response
 
-      if (msg === "duplicate_line" || msg === "duplicate_email" || msg === "rate_limited") {
+      if (msg === "duplicate" || msg === "rate_limited") {
         toast.error(humanOtpMessage(msg));
         return;
       }
@@ -285,13 +283,8 @@ export default function RegisterForm() {
           return;
         }
 
-        if (msg === "duplicate_line") {
+        if (msg === "duplicate") {
           toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
-          return;
-        }
-
-        if (msg === "duplicate_email") {
-          toast.error("อีเมลนี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
           return;
         }
 

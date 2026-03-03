@@ -239,22 +239,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: line.message } satisfies ApiResp, { status: 401 });
     }
 
+    
     // --- duplicate check (LINE เดิม) ---
-    const { data: existed, error: existErr } = await supabaseAdmin
+    const { data: existedLine, error: existLineErr } = await supabaseAdmin
       .from("user")
       .select("id")
       .eq("uline_id", line.sub)
       .limit(1)
       .maybeSingle();
 
-    if (existErr) {
+    if (existLineErr) {
       return NextResponse.json(
-        { success: false, message: "supabase_error", details: existErr.message } satisfies ApiResp,
+        { success: false, message: "supabase_error", details: existLineErr.message } satisfies ApiResp,
         { status: 500 }
       );
     }
-    if (existed) {
-      return NextResponse.json({ success: false, message: "duplicate" } satisfies ApiResp, { status: 200 });
+
+    if (existedLine) {
+      return NextResponse.json(
+        { success: false, message: "duplicate_line" } satisfies ApiResp,
+        { status: 200 }
+      );
+    }
+
+    // --- duplicate check (EMAIL ซ้ำ) ---
+    const { data: existedEmail, error: existEmailErr } = await supabaseAdmin
+      .from("user")
+      .select("id")
+      .eq("email", email)
+      .limit(1)
+      .maybeSingle();
+
+    if (existEmailErr) {
+      return NextResponse.json(
+        { success: false, message: "supabase_error", details: existEmailErr.message } satisfies ApiResp,
+        { status: 500 }
+      );
+    }
+
+    if (existedEmail) {
+      return NextResponse.json(
+        { success: false, message: "duplicate_email" } satisfies ApiResp,
+        { status: 200 }
+      );
     }
 
     // --- create otp + insert otp_requests ---
