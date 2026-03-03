@@ -239,7 +239,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: line.message } satisfies ApiResp, { status: 401 });
     }
 
-    
     // --- duplicate check (LINE เดิม) ---
     const { data: existedLine, error: existLineErr } = await supabaseAdmin
       .from("user")
