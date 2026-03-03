@@ -81,9 +81,13 @@ async function consumeOr429(limiter: RateLimiterAbstract, key: string) {
   } catch (e: unknown) {
     const ms = isRateLimitRej(e) ? e.msBeforeNext : 1000;
     const retryAfter = Math.ceil(ms / 1000);
+
     return NextResponse.json(
-      { success: false, message: "rate_limited", retryAfter } satisfies ApiResp,
-      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      { message: "rate_limited" },  // ✅ เหลือแค่ message
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfter) }, // ยังส่ง header ได้
+      }
     );
   }
 }
