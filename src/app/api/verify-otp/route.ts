@@ -285,21 +285,46 @@ export async function POST(req: Request) {
       console.error("otp_requests update used error:", usedUp.error);
       return respondError(req, 500, "supabase_error", usedUp.error);
     }
-
+    const depId = Number(form.department);
+    const pId = Number(form.position);
+    
+    if (!Number.isFinite(depId) || !Number.isFinite(pId)) {
+      return NextResponse.json({ message: "bad_request", details: "department/position must be numeric ids" }, { status: 400 });
+    }
+    
+    // หา dp_id จาก dep_pos
+    const dp = await supabaseAdmin
+      .from("dep_pos")
+      .select("dp_id")
+      .eq("dep_id", depId)
+      .eq("p_id", pId)
+      .limit(1)
+      .maybeSingle<{ dp_id: number }>();
+    
+    if (dp.error) {
+      return respondError(req, 500, "supabase_error", dp.error);
+    }
+    if (!dp.data?.dp_id) {
+      // กันกรณี user เลือก combo ที่ไม่มีใน relation
+      return NextResponse.json(
+        { message: "bad_request", details: "invalid department-position relation" },
+        { status: 400 }
+      );
+    }
+    
+    const dpId = dp.data.dp_id;
     // insert user
     const userPayload = {
       flname: form.flname,
       nname: form.nname,
       dob: form.dob,
-      position: Number(form.position),
+      position: dpId,           // ✅ ใส่ dp_id ไม่ใช่ p_id
       uline_id: line.sub,
       email,
       phone: form.phone,
       verified: true,
       status: "active",
-      // emp_id: ถ้า NOT NULL ต้องใส่ค่าเพิ่มที่นี่
     };
-
     const ins = await supabaseAdmin.from("user").insert(userPayload);
     if (ins.error) {
       console.error("user insert error:", ins.error);
