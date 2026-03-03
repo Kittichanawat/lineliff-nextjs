@@ -232,16 +232,12 @@ export default function RegisterForm() {
       }
 
       // handle response
-      if (res.data?.success === false) {
-        // กรณี rate limit / duplicate / อื่น ๆ
-        toast.error("ส่ง OTP ไม่สำเร็จ");
-        return;
-      }
-      if (res.data?.message === "rate_limited") {
+      
+      if (res.data?.message === "rate_limited" && res.data?.success === false) {
         toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
         return;
       }
-      if (res.data?.message === "duplicate") {
+      if (res.data?.message === "duplicate" && res.data?.success === false) {
         toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
         return;
       }
