@@ -58,7 +58,7 @@ async function forceRelogin(): Promise<string> {
     if (liff.isLoggedIn()) {
       liff.logout();   // เคลียร์ session ใน LIFF
     }
-  } catch {}
+  } catch { }
 
   // redirect ไป login ใหม่
   liff.login({ redirectUri: window.location.href });
@@ -92,6 +92,19 @@ export default function RegisterForm() {
   const [otpSeconds, setOtpSeconds] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
+  // ---------- date of birth ----------
+  const today = new Date();
+  const minAge = 15;
+
+  const maxDate = new Date(
+    today.getFullYear() - minAge,
+    today.getMonth(),
+    today.getDate()
+  )
+    .toISOString()
+    .split("T")[0];
+
+  // ---------- OTP timer ----------
   const startOtpTimer = (sec = OTP_TTL) => setOtpSeconds(sec);
   const formatTime = (s: number) => {
     const minutes = Math.floor(s / 60);
@@ -196,20 +209,20 @@ export default function RegisterForm() {
       email,
       captchaToken,
     });
-    
+
   };
-const humanOtpMessage = (msg?: string) => {
-  switch (msg) {
-    case "duplicate":
-      return "บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
-    case "rate_limited":
-      return "มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
-    case "line_token_invalid":
-      return "LINE session หมดอายุ กำลังพาไป login ใหม่...";
-    default:
-      return "";
-  }
-};
+  const humanOtpMessage = (msg?: string) => {
+    switch (msg) {
+      case "duplicate":
+        return "บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
+      case "rate_limited":
+        return "มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
+      case "line_token_invalid":
+        return "LINE session หมดอายุ กำลังพาไป login ใหม่...";
+      default:
+        return "";
+    }
+  };
   const onSubmit = async (data: FormData) => {
     if (!isLiffReady) {
       toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
@@ -243,18 +256,18 @@ const humanOtpMessage = (msg?: string) => {
       }
 
       // handle response
-      
+
       if (msg === "duplicate" || msg === "rate_limited") {
         toast.error(humanOtpMessage(msg));
         return;
       }
-  
+
       // ถ้าคุณยังใช้ success
       if (res.data?.success === false) {
         toast.error("ส่ง OTP ไม่สำเร็จ");
         return;
       }
-  
+
       setOtp("");
       setIsOtpOpen(true);
       startOtpTimer();
@@ -264,24 +277,24 @@ const humanOtpMessage = (msg?: string) => {
       if (axios.isAxiosError<ApiErrorBody>(e)) {
         const status = e.response?.status;
         const msg = e.response?.data?.message;
-  
+
         if (status === 429 || msg === "rate_limited") {
           toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
           return;
         }
-  
+
         if (msg === "duplicate") {
           toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
           return;
         }
-  
+
         if (status === 401 && msg === "line_token_invalid") {
           toast("LINE session หมดอายุ กำลังพาไป login ใหม่...", { icon: "🔄" });
           await forceRelogin();
           return;
         }
       }
-  
+
       toast.error(getAxiosMessage(e, "ส่ง OTP ไม่สำเร็จ"));
     } finally {
       setIsLoading(false);
@@ -299,7 +312,7 @@ const humanOtpMessage = (msg?: string) => {
   const handleResendOtp = async () => {
     if (otpSeconds > 0 || resendLoading) return;
 
-    if (!isLiffReady ) {
+    if (!isLiffReady) {
       toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
       return;
     }
@@ -322,13 +335,13 @@ const humanOtpMessage = (msg?: string) => {
       const token = await ensureFreshIdToken();
       if (!token) return;
       const res = await axios.post<OtpRequestResponse>("/api/send-otp", {
-        idToken: token,  
+        idToken: token,
         email,
         captchaToken,
       });
 
       if (res.data?.success === false) {
-        toast.error( "ส่งรหัสใหม่ไม่สำเร็จ");
+        toast.error("ส่งรหัสใหม่ไม่สำเร็จ");
         return;
       }
 
@@ -442,8 +455,28 @@ const humanOtpMessage = (msg?: string) => {
 
           <div>
             <label className="form-section-title">วันเดือนปีเกิด</label>
-            <input type="date" {...register("dob", { required: "กรุณาเลือกวันเกิด" })} className="form-input" />
-            {errors.dob && <p className="text-red-500 text-sm mt-1">{errors.dob.message}</p>}
+            <input
+              type="date"
+              max={maxDate}
+              {...register("dob", {
+                required: "กรุณาเลือกวันเกิด",
+                validate: (value) => {
+                  const birth = new Date(value);
+                  const age =
+                    today.getFullYear() -
+                    birth.getFullYear() -
+                    (today <
+                      new Date(today.getFullYear(), birth.getMonth(), birth.getDate())
+                      ? 1
+                      : 0);
+
+                  if (age < 15) return "อายุต้องไม่น้อยกว่า 15 ปี";
+                  if (age > 80) return "กรุณาตรวจสอบวันเกิดให้ถูกต้อง";
+                  return true;
+                },
+              })}
+              className="form-input"
+            />
           </div>
 
           <div>
