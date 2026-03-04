@@ -1,3 +1,4 @@
+// src/app/meeting/MeetingContent.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -48,9 +49,11 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
           setProfiles([]);
           return;
         }
-
+      
         const promises = users.map(async (u: UserRow) => {
-          const res = await fetch(`/api/line-profile?userId=${u.uline_id}`);
+          const res = await fetch(
+            `/api/line-profile?groupId=${encodeURIComponent(groupId)}&userId=${encodeURIComponent(u.uline_id)}`
+          );
           if (!res.ok) return null;
           const profile = await res.json();
           return {
