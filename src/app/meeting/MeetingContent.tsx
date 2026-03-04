@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
@@ -40,29 +39,25 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
     const fetchProfiles = async () => {
       setLoading(true);
       try {
-        const { data: users, error } = await supabase
-          .from("user")
-          .select("uline_id, email");
-
-        if (error || !users) {
-          console.error("❌ Supabase error:", error);
+        const usersRes = await fetch("/api/users", { cache: "no-store" });
+        const usersJson = await usersRes.json();
+        
+        if (!usersRes.ok || !usersJson.success) {
+          console.error("❌ /api/users error:", usersJson?.error);
           setProfiles([]);
           return;
         }
+        
+        const users: UserRow[] = Array.isArray(usersJson.users) ? usersJson.users : [];
       
         const promises = users.map(async (u: UserRow) => {
           const url = `/api/line-profile?groupId=${encodeURIComponent(groupId)}&userId=${encodeURIComponent(u.uline_id)}`;
-          console.log("➡️ fetching:", url);
         
-          const res = await fetch(url);
+          const res = await fetch(url, { cache: "no-store" });
         
           if (!res.ok) {
             const txt = await res.text();
-            console.error("❌ line-profile failed", {
-              userId: u.uline_id,
-              status: res.status,
-              body: txt,
-            });
+            console.error("❌ line-profile failed:", u.uline_id, res.status, txt);
             return null;
           }
         
