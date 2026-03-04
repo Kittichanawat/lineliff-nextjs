@@ -39,11 +39,11 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
     const fetchProfiles = async () => {
       setLoading(true);
       try {
-        const usersRes = await fetch("/api/users", { cache: "no-store" });
+        const usersRes = await fetch("/api/user", { cache: "no-store" });
         const usersJson = await usersRes.json();
         
         if (!usersRes.ok || !usersJson.success) {
-          console.error("❌ /api/users error:", usersJson?.error);
+          console.error("❌ /api/user error:", usersJson?.error);
           setProfiles([]);
           return;
         }
