@@ -51,10 +51,21 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
         }
       
         const promises = users.map(async (u: UserRow) => {
-          const res = await fetch(
-            `/api/line-profile?groupId=${encodeURIComponent(groupId)}&userId=${encodeURIComponent(u.uline_id)}`
-          );
-          if (!res.ok) return null;
+          const url = `/api/line-profile?groupId=${encodeURIComponent(groupId)}&userId=${encodeURIComponent(u.uline_id)}`;
+          console.log("➡️ fetching:", url);
+        
+          const res = await fetch(url);
+        
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error("❌ line-profile failed", {
+              userId: u.uline_id,
+              status: res.status,
+              body: txt,
+            });
+            return null;
+          }
+        
           const profile = await res.json();
           return {
             userId: u.uline_id,
