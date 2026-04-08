@@ -7,7 +7,7 @@ export async function POST(req: Request) {
 
     // 🔹 Forward ไปที่ n8n webhook
     const res = await fetch(
-      "https://n8n-three.nn-dev.me/webhook/f83cb2df-d2e6-4215-8218-9b7537dce6b9",
+      "https://n8n-three.nn-dev.me/webhook/3095d286-5486-4d33-8e31-7216c63e4f68",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
