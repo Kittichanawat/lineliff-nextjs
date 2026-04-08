@@ -106,12 +106,45 @@ async function sendOtpEmail(to: string, otp: string) {
     subject: "รหัส OTP สำหรับยืนยันตัวตน",
     text: `รหัส OTP ของคุณคือ: ${otp}\nรหัสมีอายุ 5 นาที\nหากไม่ได้ทำรายการ กรุณาละเว้นอีเมลนี้`,
     html: `
-      <div style="font-family:sans-serif">
-        <h2>รหัส OTP ของคุณ</h2>
-        <div style="font-size:28px;font-weight:700;letter-spacing:6px">${otp}</div>
-        <p>รหัสมีอายุ 5 นาที</p>
-        <p style="color:#666">หากไม่ได้ทำรายการ กรุณาละเว้นอีเมลนี้</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
+
+  <!-- Header -->
+  <div style="background:#1a1a2e;padding:1.25rem 1.5rem;display:flex;align-items:center;gap:10px;">
+    <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+      🔐
+    </div>
+    <span style="color:white;font-weight:500;font-size:15px;">การยืนยันตัวตน</span>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:2rem;background:#ffffff;">
+    <p style="color:#374151;font-size:15px;margin:0 0 1.5rem;line-height:1.6;">
+      กรุณาใช้รหัส OTP ด้านล่างเพื่อยืนยันตัวตน อย่าเปิดเผยรหัสนี้แก่ผู้อื่น
+    </p>
+
+    <!-- OTP Box -->
+    <div style="background:#f9fafb;border-radius:10px;padding:1.5rem;text-align:center;border:1px solid #e5e7eb;margin-bottom:1.5rem;">
+      <p style="font-size:12px;color:#6b7280;margin:0 0 0.75rem;letter-spacing:0.08em;text-transform:uppercase;">รหัส OTP</p>
+      <div style="font-size:36px;font-weight:600;letter-spacing:12px;color:#111827;margin-bottom:0.75rem;">${otp}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;color:#6b7280;font-size:13px;">
+        ⏱ รหัสหมดอายุใน 5 นาที
       </div>
+    </div>
+
+    <!-- Warning -->
+    <div style="background:#fff8ed;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:0.875rem 1rem;margin-bottom:1.5rem;">
+      <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+        หากคุณไม่ได้ทำรายการนี้ กรุณาละเว้นอีเมลฉบับนี้
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 1.25rem;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.6;">
+      อีเมลนี้ถูกส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ
+    </p>
+  </div>
+</div>
     `,
   });
 }
