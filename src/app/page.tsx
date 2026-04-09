@@ -322,8 +322,8 @@ export default function RegisterForm() {
       
       const res = await axios.post<RegisterVerifyResponse>("/api/verify-otp", {
         idToken: token,
-        otp,
-        email, 
+        otp: String(otp).trim(),
+        email: email, 
       });
 
       const msg = res.data?.message;
