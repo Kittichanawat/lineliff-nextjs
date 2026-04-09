@@ -311,7 +311,8 @@ export default function RegisterForm() {
       return;
     }
 
-    const form = watch();
+    // ดึงแค่ email ออกมาตรงๆ
+    const email = watch("email");
 
     try {
       setIsVerifying(true);
@@ -322,7 +323,7 @@ export default function RegisterForm() {
       const res = await axios.post<RegisterVerifyResponse>("/api/verify-otp", {
         idToken: token,
         otp,
-        form, 
+        email, 
       });
 
       const msg = res.data?.message;
