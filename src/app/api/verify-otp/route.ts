@@ -35,15 +35,12 @@ type LineVerifyResult = LineVerifyOk | LineVerifyFail;
 // Schemas
 // --------------------
 // ปรับฟอร์มให้เหลือแค่อีเมล
-const formSchema = z.object({
-  email: z.string().email(),
-});
+
 
 const bodySchema = z.object({
   idToken: z.string().min(10),
-  // 🟢 ใช้ z.coerce.string() เพื่อบังคับแปลงทุกอย่างที่เข้ามาให้เป็น String เสมอ
   otp: z.coerce.string().regex(/^\d{6}$/), 
-  form: formSchema,
+  email: z.string().email(),
   captchaToken: z.string().optional(),
 });
 
