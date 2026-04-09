@@ -178,8 +178,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { idToken, otp, form, captchaToken } = parsed.data;
-    const email = form.email.trim().toLowerCase();
+    const { idToken, otp, email, captchaToken } = parsed.data;
+    const normalizedEmail = email.trim().toLowerCase(); // เปลี่ยนชื่อตัวแปรนิดนึงกันสับสนตอนเอาไป Query
 
     // optional reCAPTCHA
     if (captchaToken) {
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
     const otpRes = await supabaseAdmin
       .from("otp_requests")
       .select("id,email,line_sub,otp_hash,expires_at,used,attempts,created_at,locked_until")
-      .eq("email", email)
+      .eq("email", normalizedEmail)
       .eq("line_sub", line.sub)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -292,7 +292,7 @@ export async function POST(req: Request) {
     const existingUser = await supabaseAdmin
       .from("user")
       .select("id")
-      .eq("email", email)
+      .eq("email", normalizedEmail)
       .neq("status", "deleted") // ต้องไม่ใช่พนักงานที่โดนลบ
       .limit(1)
       .maybeSingle();
