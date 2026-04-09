@@ -1,116 +1,161 @@
-// src/app/api/verify-otp/route.ts
+// src/app/api/send-otp/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createRedisClient } from "redis";
+import {
+  RateLimiterAbstract,
+  RateLimiterMemory,
+  RateLimiterRedis,
+} from "rate-limiter-flexible";
 import { z } from "zod";
 
-type VerifyMessage =
-  | "success"
-  | "duplicate"
-  | "otp_invalid"
-  | "otp_expired"
-  | "otp_locked"
-  | "supabase_error"
-  | "supabase_insert_failed"
-  | "bad_request"
-  | "captcha_failed"
-  | "missing_line_channel_id"
-  | "line_token_invalid"
-  | "line_sub_missing";
-
-type VerifyResp = { message: VerifyMessage; details?: unknown };
-
-type RecaptchaVerifyResponse = { success: boolean; "error-codes"?: string[] };
-type LineVerifyResponse = { sub?: string };
-
-type LineVerifyOk = { ok: true; sub: string };
-type LineVerifyFail = {
-  ok: false;
-  message: "missing_line_channel_id" | "line_token_invalid" | "line_sub_missing";
+type ApiResp = {
+  success: boolean;
+  message: string;
+  retryAfter?: number;
+  details?: string[] | string;
 };
-type LineVerifyResult = LineVerifyOk | LineVerifyFail;
-
-// --------------------
-// Schemas
-// --------------------
-const formSchema = z.object({
-  flname: z.string().min(1),
-  nname: z.string().min(1),
-  dob: z.string().min(1), // YYYY-MM-DD
-  department: z.string().min(1),
-  position: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(5),
-});
-
-const bodySchema = z.object({
-  idToken: z.string().min(10),
-  otp: z.string().regex(/^\d{6}$/),
-  form: formSchema,
-  captchaToken: z.string().min(1).optional(),
-});
 
 // --------------------
 // Supabase Admin
 // --------------------
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL) throw new Error("Missing env: NEXT_PUBLIC_SUPABASE_URL");
-if (!SERVICE_KEY) throw new Error("Missing env: SUPABASE_SERVICE_ROLE_KEY");
-
-const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false },
-});
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+);
 
 // --------------------
-// Debug helpers
+// Redis (optional)
 // --------------------
-function allowDebug(req: Request) {
-  // ตั้งใน Vercel: DEBUG_API_KEY=xxx
-  const envKey = process.env.DEBUG_API_KEY?.trim();
-  if (!envKey) return false;
-  const key = req.headers.get("x-debug-key")?.trim();
-  return Boolean(key && key === envKey);
+const REDIS_URL = process.env.REDIS_URL?.trim();
+const redis = REDIS_URL ? createRedisClient({ url: REDIS_URL }) : null;
+
+let redisReady = false;
+if (redis) {
+  redis.on("error", () => {
+    redisReady = false;
+  });
+  redis
+    .connect()
+    .then(() => {
+      redisReady = true;
+    })
+    .catch(() => {
+      redisReady = false;
+    });
 }
 
-function toErrorDetails(e: unknown) {
-  // พยายามดึงข้อมูลจาก supabase error / fetch error / thrown error
-  if (e instanceof Error) {
-    return { name: e.name, message: e.message, stack: e.stack };
+function makeLimiter(points: number, durationSec: number): RateLimiterAbstract {
+  if (redis && redisReady) {
+    return new RateLimiterRedis({
+      storeClient: redis,
+      keyPrefix: "rl",
+      points,
+      duration: durationSec,
+    });
   }
-  if (e && typeof e === "object") {
-    // supabase error มักมี message / details / hint / code
-    const obj = e as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const k of ["message", "details", "hint", "code", "status", "name"]) {
-      if (k in obj) out[k] = obj[k];
-    }
-    return Object.keys(out).length ? out : obj;
-  }
-  return e;
+  return new RateLimiterMemory({ points, duration: durationSec });
 }
 
-function respondError(req: Request, status: number, message: VerifyMessage, err?: unknown) {
-  const debug = allowDebug(req);
-  return NextResponse.json(
-    {
-      message,
-      ...(debug && err !== undefined ? { details: toErrorDetails(err) } : {}),
-    } satisfies VerifyResp,
-    { status }
+const limiterIp = makeLimiter(10, 10 * 60); // 10 req / 10 min / ip
+const limiterEmail = makeLimiter(3, 10 * 60); // 3 req / 10 min / email
+const limiterCooldown = makeLimiter(1, 60); // 1 req / 60 sec / email
+
+type RateLimitRej = { msBeforeNext: number };
+function isRateLimitRej(e: unknown): e is RateLimitRej {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "msBeforeNext" in e &&
+    typeof (e as { msBeforeNext?: unknown }).msBeforeNext === "number"
   );
 }
 
+async function consumeOr429(limiter: RateLimiterAbstract, key: string) {
+  try {
+    await limiter.consume(key);
+    return null;
+  } catch (e: unknown) {
+    const ms = isRateLimitRej(e) ? e.msBeforeNext : 1000;
+    const retryAfter = Math.ceil(ms / 1000);
+    return NextResponse.json(
+      { success: false, message: "rate_limited", retryAfter } satisfies ApiResp,
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
+}
+
 // --------------------
-// Other helpers
+// Mailer
+// --------------------
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 465),
+  secure: String(process.env.SMTP_SECURE || "true") === "true",
+  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+});
+
+async function sendOtpEmail(to: string, otp: string) {
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER!;
+  await transporter.sendMail({
+    from,
+    to,
+    subject: "รหัส OTP สำหรับยืนยันตัวตน",
+    text: `รหัส OTP ของคุณคือ: ${otp}\nรหัสมีอายุ 5 นาที\nหากไม่ได้ทำรายการ กรุณาละเว้นอีเมลนี้`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
+        <div style="background:#1a1a2e;padding:1.25rem 1.5rem;display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+            🔐
+          </div>
+          <span style="color:white;font-weight:500;font-size:15px;">การยืนยันตัวตน</span>
+        </div>
+
+        <div style="padding:2rem;background:#ffffff;">
+          <p style="color:#374151;font-size:15px;margin:0 0 1.5rem;line-height:1.6;">
+            กรุณาใช้รหัส OTP ด้านล่างเพื่อยืนยันตัวตน และผูกบัญชี LINE เข้ากับอีเมลองค์กรของคุณ
+          </p>
+
+          <div style="background:#f9fafb;border-radius:10px;padding:1.5rem;text-align:center;border:1px solid #e5e7eb;margin-bottom:1.5rem;">
+            <p style="font-size:12px;color:#6b7280;margin:0 0 0.75rem;letter-spacing:0.08em;text-transform:uppercase;">รหัส OTP</p>
+            <div style="font-size:36px;font-weight:600;letter-spacing:12px;color:#111827;margin-bottom:0.75rem;">${otp}</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:5px;color:#6b7280;font-size:13px;">
+              ⏱ รหัสหมดอายุใน 5 นาที
+            </div>
+          </div>
+
+          <div style="background:#fff8ed;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:0.875rem 1rem;margin-bottom:1.5rem;">
+            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+              หากคุณไม่ได้ทำรายการนี้ กรุณาละเว้นอีเมลฉบับนี้
+            </p>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 1.25rem;">
+          <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.6;">
+            อีเมลนี้ถูกส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ
+          </p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+// --------------------
+// Helpers
 // --------------------
 function getIp(req: Request) {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
-    undefined
+    "unknown"
   );
+}
+
+function genOtp6() {
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 function hashOtp(otp: string) {
@@ -118,11 +163,11 @@ function hashOtp(otp: string) {
   return crypto.createHash("sha256").update(otp + pepper).digest("hex");
 }
 
-function parseIso(s: string | null | undefined) {
-  if (!s) return null;
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : t;
-}
+type RecaptchaVerifyResponse = {
+  success: boolean;
+  "error-codes"?: string[];
+  score?: number;
+};
 
 async function verifyRecaptcha(token: string, ip?: string) {
   const secret = process.env.RECAPTCHA_SECRET_KEY ?? "";
@@ -135,8 +180,18 @@ async function verifyRecaptcha(token: string, ip?: string) {
       ...(ip ? { remoteip: ip } : {}),
     }),
   });
-  return (await res.json()) as RecaptchaVerifyResponse;
+
+  const data = (await res.json()) as RecaptchaVerifyResponse;
+  return data;
 }
+
+type LineVerifyOk = { ok: true; sub: string };
+type LineVerifyFail = { ok: false; message: "missing_line_channel_id" | "line_token_invalid" | "line_sub_missing" };
+type LineVerifyResult = LineVerifyOk | LineVerifyFail;
+
+type LineVerifyResponse = {
+  sub?: string;
+};
 
 async function verifyLineIdToken(idToken: string): Promise<LineVerifyResult> {
   const clientId = process.env.LINE_LOGIN_CHANNEL_ID?.trim();
@@ -158,19 +213,13 @@ async function verifyLineIdToken(idToken: string): Promise<LineVerifyResult> {
 }
 
 // --------------------
-// DB row types
+// Request schema
 // --------------------
-type OtpRow = {
-  id: number;
-  email: string;
-  line_sub: string;
-  otp_hash: string;
-  expires_at: string;
-  used: boolean;
-  attempts: number;
-  created_at: string;
-  locked_until: string | null;
-};
+const sendOtpSchema = z.object({
+  captchaToken: z.string().min(1),
+  idToken: z.string().min(10),
+  email: z.string().email(),
+});
 
 // --------------------
 // Route
@@ -179,170 +228,121 @@ export async function POST(req: Request) {
   const ip = getIp(req);
 
   try {
-    const parsed = bodySchema.safeParse(await req.json());
+    const parsed = sendOtpSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json(
-        { message: "bad_request", details: allowDebug(req) ? parsed.error.flatten() : undefined } satisfies VerifyResp,
+        { success: false, message: "bad_request", details: parsed.error.issues.map((i) => i.message) } satisfies ApiResp,
         { status: 400 }
       );
     }
 
-    const { idToken, otp, form, captchaToken } = parsed.data;
-    const email = form.email.trim().toLowerCase();
+    const { captchaToken, idToken } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
 
-    // optional reCAPTCHA
-    if (captchaToken) {
-      const rc = await verifyRecaptcha(captchaToken, ip);
-      if (!rc.success) {
-        return respondError(req, 400, "captcha_failed", rc);
-      }
+    // --- Rate limit ---
+    const rl1 = await consumeOr429(limiterIp, `otp_req_ip:${ip}`);
+    if (rl1) return rl1;
+
+    const rl2 = await consumeOr429(limiterEmail, `otp_req_email:${email}`);
+    if (rl2) return rl2;
+
+    const rl3 = await consumeOr429(limiterCooldown, `otp_cooldown:${email}`);
+    if (rl3) return rl3;
+
+    // --- reCAPTCHA ---
+    const rc = await verifyRecaptcha(captchaToken, ip);
+    if (!rc.success) {
+      return NextResponse.json(
+        { success: false, message: "captcha_failed", details: rc["error-codes"] } satisfies ApiResp,
+        { status: 400 }
+      );
     }
 
-    // LINE verify
+    // --- LINE verify ---
     const line = await verifyLineIdToken(idToken);
     if (!line.ok) {
-      return respondError(req, 401, line.message);
+      return NextResponse.json({ success: false, message: line.message } satisfies ApiResp, { status: 401 });
     }
 
-    // duplicate check
-    const dup = await supabaseAdmin.from("user").select("id").eq("uline_id", line.sub).limit(1).maybeSingle();
-    if (dup.error) {
-      console.error("user duplicate check error:", dup.error);
-      return respondError(req, 500, "supabase_error", dup.error);
-    }
-    if (dup.data) {
-      return NextResponse.json({ message: "duplicate" } satisfies VerifyResp, { status: 200 });
-    }
-
-    // latest otp
-    const otpRes = await supabaseAdmin
-      .from("otp_requests")
-      .select("id,email,line_sub,otp_hash,expires_at,used,attempts,created_at,locked_until")
-      .eq("email", email)
-      .eq("line_sub", line.sub)
-      .order("created_at", { ascending: false })
+    // --- เช็คว่าบัญชี LINE นี้เคยผูกไว้หรือยัง (เช็คในตาราง user_social_logins) ---
+    const { data: existedLine, error: existLineErr } = await supabaseAdmin
+      .from("user_social_logins")
+      .select("id")
+      .eq("provider", "line")
+      .eq("provider_id", line.sub)
       .limit(1)
-      .maybeSingle<OtpRow>();
+      .maybeSingle();
 
-    if (otpRes.error) {
-      console.error("otp_requests select error:", otpRes.error);
-      return respondError(req, 500, "supabase_error", otpRes.error);
-    }
-    if (!otpRes.data) {
-      return NextResponse.json({ message: "otp_invalid" } satisfies VerifyResp, { status: 200 });
-    }
-
-    const row = otpRes.data;
-
-    if (row.used) {
-      return NextResponse.json({ message: "otp_invalid" } satisfies VerifyResp, { status: 200 });
-    }
-
-    const lockTs = parseIso(row.locked_until);
-    if (lockTs && lockTs > Date.now()) {
-      return NextResponse.json({ message: "otp_locked" } satisfies VerifyResp, { status: 200 });
-    }
-
-    const expTs = parseIso(row.expires_at);
-    if (!expTs || expTs <= Date.now()) {
-      return NextResponse.json({ message: "otp_expired" } satisfies VerifyResp, { status: 200 });
-    }
-
-    // constant-time compare
-    const incomingHash = hashOtp(otp);
-    const ok = crypto.timingSafeEqual(Buffer.from(incomingHash), Buffer.from(row.otp_hash));
-
-    const MAX_ATTEMPTS = 5;
-    const LOCK_MINUTES = 5;
-
-    if (!ok) {
-      const nextAttempts = (row.attempts ?? 0) + 1;
-      const updates: Record<string, unknown> = { attempts: nextAttempts };
-
-      if (nextAttempts >= MAX_ATTEMPTS) {
-        updates.locked_until = new Date(Date.now() + LOCK_MINUTES * 60 * 1000).toISOString();
-      }
-
-      const up = await supabaseAdmin.from("otp_requests").update(updates).eq("id", row.id);
-      if (up.error) {
-        console.error("otp_requests update attempts error:", up.error);
-        return respondError(req, 500, "supabase_error", up.error);
-      }
-
+    if (existLineErr) {
       return NextResponse.json(
-        { message: nextAttempts >= MAX_ATTEMPTS ? "otp_locked" : "otp_invalid" } satisfies VerifyResp,
-        { status: 200 }
-      );
-    }
-
-    // mark used
-    const usedUp = await supabaseAdmin
-      .from("otp_requests")
-      .update({ used: true, used_at: new Date().toISOString() })
-      .eq("id", row.id);
-
-    if (usedUp.error) {
-      console.error("otp_requests update used error:", usedUp.error);
-      return respondError(req, 500, "supabase_error", usedUp.error);
-    }
-    const depId = Number(form.department);
-    const pId = Number(form.position);
-    
-    if (!Number.isFinite(depId) || !Number.isFinite(pId)) {
-      return NextResponse.json({ message: "bad_request", details: "department/position must be numeric ids" }, { status: 400 });
-    }
-    
-    // หา dp_id จาก dep_pos
-    const dp = await supabaseAdmin
-      .from("dep_pos")
-      .select("dp_id")
-      .eq("dep_id", depId)
-      .eq("p_id", pId)
-      .limit(1)
-      .maybeSingle<{ dp_id: number }>();
-    
-    if (dp.error) {
-      return respondError(req, 500, "supabase_error", dp.error);
-    }
-    if (!dp.data?.dp_id) {
-      // กันกรณี user เลือก combo ที่ไม่มีใน relation
-      return NextResponse.json(
-        { message: "bad_request", details: "invalid department-position relation" },
-        { status: 400 }
-      );
-    }
-    
-    const dpId = dp.data.dp_id;
-    // insert user
-    const userPayload = {
-      flname: form.flname,
-      nname: form.nname,
-      dob: form.dob,
-      position: dpId,           
-      uline_id: line.sub,
-      email,
-      phone: form.phone,
-      verified: true,
-      status: "active",
-    };
-    const ins = await supabaseAdmin.from("user").insert(userPayload);
-    if (ins.error) {
-      console.error("user insert error:", ins.error);
-    
-      return NextResponse.json(
-        {
-          message: ins.error.message,   
-          code: ins.error.code,
-          details: ins.error.details,
-          hint: ins.error.hint,
-        },
+        { success: false, message: "supabase_error", details: existLineErr.message } satisfies ApiResp,
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ message: "success" } satisfies VerifyResp, { status: 200 });
+    if (existedLine) {
+      // ถ้าเจอ แสดงว่า LINE นี้ผูกกับพนักงานคนใดคนหนึ่งไปแล้ว
+      return NextResponse.json(
+        { success: false, message: "duplicate_line" } satisfies ApiResp,
+        { status: 200 }
+      );
+    }
+
+    // --- เช็คว่ามี อีเมล นี้ในระบบพนักงานหรือไม่ ---
+    // เราต้องมั่นใจว่าอีเมลที่กรอกมา เป็นอีเมลของพนักงานที่มีอยู่ในตาราง user แล้วจริงๆ (status ต้องไม่เป็น deleted)
+    const { data: existedEmail, error: existEmailErr } = await supabaseAdmin
+      .from("user")
+      .select("id")
+      .eq("email", email)
+      .neq("status", "deleted") // ไม่นับพนักงานที่ลบไปแล้ว
+      .limit(1)
+      .maybeSingle();
+
+    if (existEmailErr) {
+      return NextResponse.json(
+        { success: false, message: "supabase_error", details: existEmailErr.message } satisfies ApiResp,
+        { status: 500 }
+      );
+    }
+
+    if (!existedEmail) {
+      // ถ้าไม่เจออีเมลนี้ในระบบ (ตรงข้ามกับแบบเก่า)
+      return NextResponse.json(
+        { success: false, message: "email_not_found" } satisfies ApiResp,
+        { status: 200 }
+      );
+    }
+
+    // --- create otp + insert otp_requests ---
+    const otp = genOtp6();
+    const otpHash = hashOtp(otp);
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    const { error: insErr } = await supabaseAdmin.from("otp_requests").insert({
+      email,
+      otp_hash: otpHash,
+      line_sub: line.sub,
+      expires_at: expiresAt,
+      used: false,
+      attempts: 0,
+    });
+
+    if (insErr) {
+      return NextResponse.json(
+        { success: false, message: "supabase_insert_failed", details: insErr.message } satisfies ApiResp,
+        { status: 500 }
+      );
+    }
+
+    // --- send email ---
+    await sendOtpEmail(email, otp);
+
+    return NextResponse.json({ success: true, message: "ok" } satisfies ApiResp, { status: 200 });
   } catch (err: unknown) {
-    console.error("❌ verify-otp error:", err);
-    return respondError(req, 500, "supabase_error", err);
+    console.error("❌ send-otp error:", err);
+    return NextResponse.json(
+      { success: false, message: err instanceof Error ? err.message : "Unknown error" } satisfies ApiResp,
+      { status: 500 }
+    );
   }
 }
