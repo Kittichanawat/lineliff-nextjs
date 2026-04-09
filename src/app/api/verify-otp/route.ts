@@ -41,9 +41,10 @@ const formSchema = z.object({
 
 const bodySchema = z.object({
   idToken: z.string().min(10),
-  otp: z.string().regex(/^\d{6}$/),
+  // 🟢 ใช้ z.coerce.string() เพื่อบังคับแปลงทุกอย่างที่เข้ามาให้เป็น String เสมอ
+  otp: z.coerce.string().regex(/^\d{6}$/), 
   form: formSchema,
-  captchaToken: z.string().min(1).optional(),
+  captchaToken: z.string().optional(),
 });
 
 // --------------------
