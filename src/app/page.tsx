@@ -13,17 +13,8 @@ import { decodeJwt } from "jose";
 
 type ApiErrorBody = { message?: string };
 
-type Position = { p_id: string; p_name: string };
-type Department = { dep_id: string; dep_name: string; positions: Position[] };
-
 type FormData = {
-  flname: string;
-  nname: string;
-  dob: string;
-  department: string;
-  position: string;
   email: string;
-  phone: string;
 };
 
 type OtpRequestResponse = { success?: boolean; message?: string };
@@ -51,8 +42,6 @@ function isIdTokenExpired(token: string) {
   }
 }
 
-
-
 async function forceRelogin(): Promise<string> {
   try {
     if (liff.isLoggedIn()) {
@@ -73,10 +62,6 @@ export default function RegisterForm() {
   // ---------- refs ----------
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
-  // ---------- data ----------
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-
   // ---------- UI state ----------
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -91,18 +76,6 @@ export default function RegisterForm() {
   const OTP_TTL = 5 * 60;
   const [otpSeconds, setOtpSeconds] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
-
-  // ---------- date of birth ----------
-  const today = new Date();
-  const minAge = 15;
-
-  const maxDate = new Date(
-    today.getFullYear() - minAge,
-    today.getMonth(),
-    today.getDate()
-  )
-    .toISOString()
-    .split("T")[0];
 
   // ---------- OTP timer ----------
   const startOtpTimer = (sec = OTP_TTL) => setOtpSeconds(sec);
@@ -126,18 +99,10 @@ export default function RegisterForm() {
     formState: { errors },
   } = useForm<FormData>({
     defaultValues: {
-      flname: "",
-      nname: "",
-      dob: "",
-      department: "",
-      position: "",
       email: "",
-      phone: "",
     },
     mode: "onSubmit",
   });
-
-  const selectedDep = watch("department");
 
   // ---------- Init LIFF ----------
   useEffect(() => {
@@ -160,37 +125,12 @@ export default function RegisterForm() {
         setIsLiffReady(true);
       } catch (e: unknown) {
         console.error(e);
-        toast.error("เปิดผ่าน LIFF ไม่สำเร็จ");
+        toast.error("กรุณาเข้าสู่ระบบด้วย LINE ก่อนทำการยืนยันตัวตน");
       }
     };
 
     void init();
   }, []);
-
-  // ---------- Load departments via server API (ไม่ยิง supabase ตรงจาก client) ----------
-  useEffect(() => {
-    const loadDeps = async () => {
-      try {
-        const res = await axios.get<Department[]>("/api/departments");
-        setDepartments(Array.isArray(res.data) ? res.data : []);
-      } catch (e: unknown) {
-        console.error(e);
-        toast.error("โหลดข้อมูลแผนก/ตำแหน่งไม่สำเร็จ");
-      }
-    };
-
-    void loadDeps();
-  }, []);
-
-  // ---------- Update positions by department ----------
-  useEffect(() => {
-    if (!selectedDep) {
-      setPositions([]);
-      return;
-    }
-    const dep = departments.find((d) => d.dep_id === selectedDep);
-    setPositions(dep?.positions ?? []);
-  }, [selectedDep, departments]);
 
   // ---------- captcha helper ----------
   const execCaptcha = async (): Promise<string> => {
@@ -209,14 +149,14 @@ export default function RegisterForm() {
       email,
       captchaToken,
     });
-
   };
+
   const humanOtpMessage = (msg?: string) => {
     switch (msg) {
       case "duplicate_line":
-        return "บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
-      case "duplicate_email":
-        return "อีเมลนี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ";
+        return "บัญชี LINE นี้ผูกกับพนักงานท่านอื่นไปแล้ว";
+      case "email_not_found": // อาจจะเพิ่ม error ตัวนี้ในฝั่ง API แทน
+        return "ไม่พบอีเมลนี้ในระบบบริษัท กรุณาติดต่อ HR";
       case "rate_limited":
         return "มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
       case "line_token_invalid":
@@ -225,9 +165,10 @@ export default function RegisterForm() {
         return "";
     }
   };
+
   const onSubmit = async (data: FormData) => {
     if (!isLiffReady) {
-      toast.error("LIFF ยังไม่พร้อม กรุณารอสักครู่");
+      toast.error("กรุณาเข้าสู่ระบบด้วย LINE ก่อนทำการยืนยันตัวตน");
       return;
     }
 
@@ -241,11 +182,10 @@ export default function RegisterForm() {
         if (!token) return;
         setIdToken(token);
       }
-      console.log("idToken state:", idToken);
-      console.log("token to send:", token);
-      console.log("same?", token === idToken);
+
       let res = await callSendOtp(token, data.email);
       const msg = res.data?.message;
+
       // 2) ถ้า token invalid → รีเฟรช แล้ว retry 1 ครั้ง
       if (msg === "line_token_invalid") {
         toast("LINE session หมดอายุ กำลังขอ token ใหม่...", { icon: "🔄" });
@@ -258,13 +198,11 @@ export default function RegisterForm() {
       }
 
       // handle response
-
-      if (msg === "duplicate_line" || msg === "duplicate_email" || msg === "rate_limited") {
+      if (msg === "duplicate_line" || msg === "rate_limited" || msg === "email_not_found") {
         toast.error(humanOtpMessage(msg));
         return;
       }
 
-      // ถ้าคุณยังใช้ success
       if (res.data?.success === false) {
         toast.error("ส่ง OTP ไม่สำเร็จ");
         return;
@@ -286,12 +224,12 @@ export default function RegisterForm() {
         }
 
         if (msg === "duplicate_line") {
-          toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+          toast.error("บัญชี LINE นี้ผูกกับพนักงานท่านอื่นไปแล้ว");
           return;
         }
 
-        if (msg === "duplicate_email") {
-          toast.error("อีเมลนี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+        if (msg === "email_not_found") {
+          toast.error("ไม่พบอีเมลนี้ในระบบบริษัท กรุณาติดต่อ HR");
           return;
         }
 
@@ -307,6 +245,7 @@ export default function RegisterForm() {
       setIsLoading(false);
     }
   };
+
   const ensureFreshIdToken = async (): Promise<string> => {
     let token = idToken;
     if (!token || isIdTokenExpired(token)) {
@@ -316,6 +255,7 @@ export default function RegisterForm() {
     }
     return token;
   };
+
   const handleResendOtp = async () => {
     if (otpSeconds > 0 || resendLoading) return;
 
@@ -341,6 +281,7 @@ export default function RegisterForm() {
 
       const token = await ensureFreshIdToken();
       if (!token) return;
+      
       const res = await axios.post<OtpRequestResponse>("/api/send-otp", {
         idToken: token,
         email,
@@ -377,22 +318,23 @@ export default function RegisterForm() {
 
       const token = await ensureFreshIdToken();
       if (!token) return;
+      
       const res = await axios.post<RegisterVerifyResponse>("/api/verify-otp", {
         idToken: token,
         otp,
-        form,
+        form, 
       });
 
       const msg = res.data?.message;
 
       if (msg === "success") {
-        toast.success("บันทึกข้อมูลสำเร็จ");
+        toast.success("ยืนยันตัวตนสำเร็จ");
         setIsOtpOpen(false);
         return;
       }
 
       if (msg === "duplicate") {
-        toast.error("บัญชี LINE นี้มีข้อมูลอยู่แล้ว กรุณาอย่าลงทะเบียนซ้ำ");
+        toast.error("บัญชี LINE นี้ผูกกับพนักงานท่านอื่นไปแล้ว");
         setIsOtpOpen(false);
         return;
       }
@@ -411,10 +353,12 @@ export default function RegisterForm() {
         toast.error("ใส่รหัสผิดหลายครั้ง กรุณารอสักครู่แล้วลองใหม่");
         return;
       }
+      
       if (msg === "rate_limited") {
         toast.error("มีการร้องขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
         return;
       }
+      
       toast.error(msg ?? "ยืนยันไม่สำเร็จ");
     } catch (e: unknown) {
       toast.error(getAxiosMessage(e, "ยืนยัน OTP ไม่สำเร็จ"));
@@ -423,7 +367,6 @@ export default function RegisterForm() {
     }
   };
 
-  // ---------- UI ----------
   return (
     <main className="page-shell">
       <Toaster position="top-center" />
@@ -434,88 +377,16 @@ export default function RegisterForm() {
             <Image src={LOGO_SRC} alt="Company Logo" width={180} height={180} className="object-contain" priority />
           </span>
         </div>
-        <small className="text-[color:var(--text-2)]">Secure Onboarding</small>
+        <small className="text-[color:var(--text-2)]">Secure Verification</small>
       </header>
 
       <div className="glass-card card-pad animate-in">
         <h1 className="hero-title flex items-center gap-2">
-          <i className="fa-solid fa-id-card" /> ฟอร์มลงทะเบียนพนักงาน
+          <i className="fa-solid fa-shield-halved" /> ระบบยืนยันตัวตน
         </h1>
-        <p className="hero-sub mb-6">กรอกข้อมูลให้ครบถ้วนเพื่อยืนยันตัวตนผ่าน OTP ทางอีเมล</p>
+        <p className="hero-sub mb-6">กรอกอีเมลองค์กรของคุณเพื่อรับรหัส OTP สำหรับยืนยันตัวตน</p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="form-section-title">ชื่อนามสกุล</label>
-            <input
-              {...register("flname", { required: "กรุณากรอกชื่อ-นามสกุล" })}
-              className="form-input"
-              autoComplete="name"
-            />
-            {errors.flname && <p className="text-red-500 text-sm mt-1">{errors.flname.message}</p>}
-          </div>
-
-          <div>
-            <label className="form-section-title">ชื่อเล่น</label>
-            <input {...register("nname", { required: "กรุณากรอกชื่อเล่น" })} className="form-input" />
-            {errors.nname && <p className="text-red-500 text-sm mt-1">{errors.nname.message}</p>}
-          </div>
-
-          <div>
-            <label className="form-section-title">วันเดือนปีเกิด</label>
-            <input
-              type="date"
-              max={maxDate}
-              {...register("dob", {
-                required: "กรุณาเลือกวันเกิด",
-                validate: (value) => {
-                  const birth = new Date(value);
-                  const age =
-                    today.getFullYear() -
-                    birth.getFullYear() -
-                    (today <
-                      new Date(today.getFullYear(), birth.getMonth(), birth.getDate())
-                      ? 1
-                      : 0);
-
-                  if (age < 15) return "อายุต้องไม่น้อยกว่า 15 ปี";
-                  if (age > 80) return "กรุณาตรวจสอบวันเกิดให้ถูกต้อง";
-                  return true;
-                },
-              })}
-              className="form-input"
-            />
-          </div>
-
-          <div>
-            <label className="form-section-title">แผนก</label>
-            <select {...register("department", { required: "กรุณาเลือกแผนก" })} className="form-select">
-              <option value="">-- กรุณาเลือกแผนก --</option>
-              {departments.map((d) => (
-                <option key={d.dep_id} value={d.dep_id}>
-                  {d.dep_name}
-                </option>
-              ))}
-            </select>
-            {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department.message}</p>}
-          </div>
-
-          <div>
-            <label className="form-section-title">ตำแหน่ง</label>
-            <select
-              {...register("position", { required: "กรุณาเลือกตำแหน่ง" })}
-              className="form-select"
-              disabled={positions.length === 0}
-            >
-              <option value="">-- กรุณาเลือกตำแหน่ง --</option>
-              {positions.map((p) => (
-                <option key={p.p_id} value={p.p_id}>
-                  {p.p_name}
-                </option>
-              ))}
-            </select>
-            {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position.message}</p>}
-          </div>
-
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
             <label className="form-section-title">อีเมล</label>
             <input
@@ -530,27 +401,12 @@ export default function RegisterForm() {
               className="form-input"
               autoComplete="email"
               inputMode="email"
+              placeholder="example@company.com"
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="form-section-title">เบอร์โทรศัพท์</label>
-            <input
-              type="tel"
-              {...register("phone", {
-                required: "กรุณากรอกเบอร์โทรศัพท์",
-                minLength: { value: 9, message: "เบอร์โทรสั้นเกินไป" },
-                maxLength: { value: 15, message: "เบอร์โทรยาวเกินไป" },
-              })}
-              className="form-input"
-              autoComplete="tel"
-              inputMode="tel"
-            />
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
-          </div>
-
-          <div className="md:col-span-2">
             <ReCAPTCHA
               ref={recaptchaRef}
               sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
@@ -561,13 +417,13 @@ export default function RegisterForm() {
             <button
               type="submit"
               disabled={isLoading || !isLiffReady}
-              className="btn-gradient mt-3 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-gradient mt-3 w-full disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? "กำลังส่ง..." : "ส่งข้อมูล"}
+              {isLoading ? "กำลังส่ง..." : "รับรหัส OTP"}
             </button>
 
             {!isLiffReady && (
-              <p className="text-xs mt-2 text-yellow-500">กำลังเตรียม LIFF... (ถ้าไม่ขึ้น อาจไม่ได้เปิดผ่าน LINE)</p>
+              <p className="text-xs mt-2 text-center text-yellow-500">กำลังเตรียม LIFF... (ถ้าไม่ขึ้น อาจไม่ได้เปิดผ่าน LINE)</p>
             )}
           </div>
         </form>
@@ -577,8 +433,6 @@ export default function RegisterForm() {
       <Modal
         isOpen={isOtpOpen}
         onClose={() => {
-          // ปิดไม่ได้ด้วยการกด backdrop/esc (กันหลุด flow)
-          // ถ้าต้องการให้ปิดได้ ให้เปลี่ยนไป setIsOtpOpen(false)
           setIsOtpOpen(false)
         }}
         title="ยืนยันรหัส OTP"
