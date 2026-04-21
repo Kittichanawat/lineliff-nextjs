@@ -33,12 +33,16 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("user")
       .select(`
-        email,
-        user_social_logins (
-          provider,
-          provider_id
-        )
-      `)
+    id,
+    email,
+    user_social_logins!user_id ( 
+      provider,
+      provider_id
+    )
+  `)
+      // 🟢 เพิ่ม filter ตรงนี้เพื่อดึงเฉพาะคนที่ผูก LINE มาเท่านั้น (ถ้าต้องการ)
+      // หรือจะไป .find() ในโค้ดแบบเดิมก็ได้ แต่ระบุในนี้จะช่วยลดข้อมูลที่ Query ออกมาครับ
+      .eq("user_social_logins.provider", "line")
       .order("id", { ascending: true });
 
     if (error) {
@@ -85,7 +89,7 @@ export async function GET() {
     // ผมส่งกลับเป็น Array ตรงๆ เลย จะได้ใช้ง่ายๆ 
     // หรือถ้า UI ของคุณยังคาดหวัง { success: true, users: [...] } อยู่ แจ้งผมแก้ได้นะครับ
     return NextResponse.json({ success: true, users: formattedUsers });
-    
+
   } catch (e: unknown) {
     return NextResponse.json(
       { success: false, error: e instanceof Error ? e.message : "Unknown error" },
