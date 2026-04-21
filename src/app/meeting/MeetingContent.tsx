@@ -1,4 +1,3 @@
-// src/app/meeting/MeetingContent.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,15 +5,11 @@ import { useForm } from "react-hook-form";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
 
-type UserRow = {
-  uline_id: string;
-  email: string;
-};
-
+// ปรับ Type ให้ตรงกับ API ล่าสุด
 type LineProfile = {
-  userId: string;
-  displayName: string;
-  pictureUrl?: string;
+  userId: string | null;
+  displayName: string | null;
+  pictureUrl: string | null;
   email: string;
 };
 
@@ -33,84 +28,58 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<MeetingForm>();
 
-
-  // 🟣 โหลดรายชื่อจาก Supabase + LINE Profile
+  // 🟣 โหลดรายชื่อพนักงานที่มี LINE Profile แล้วจาก API เดียว
   useEffect(() => {
     const fetchProfiles = async () => {
       setLoading(true);
       try {
-        const usersRes = await fetch("/api/user", { cache: "no-store" });
-        const usersJson = await usersRes.json();
+        const res = await fetch("/api/user", { cache: "no-store" });
+        const json = await res.json();
         
-        if (!usersRes.ok || !usersJson.success) {
-          console.error("❌ /api/user error:", usersJson?.error);
-          setProfiles([]);
-          return;
+        if (!res.ok || !json.success) {
+          throw new Error(json?.error || "Failed to fetch users");
         }
         
-        const users: UserRow[] = Array.isArray(usersJson.users) ? usersJson.users : [];
-      
-        const promises = users.map(async (u: UserRow) => {
-          const url = `/api/line-profile?groupId=${encodeURIComponent(groupId)}&userId=${encodeURIComponent(u.uline_id)}`;
-        
-          const res = await fetch(url, { cache: "no-store" });
-        
-          if (!res.ok) {
-            const txt = await res.text();
-            console.error("❌ line-profile failed:", u.uline_id, res.status, txt);
-            return null;
-          }
-        
-          const profile = await res.json();
-          return {
-            userId: u.uline_id,
-            displayName: profile.displayName,
-            pictureUrl: profile.pictureUrl,
-            email: u.email,
-          } as LineProfile;
-        });
-
-        const results = (await Promise.all(promises)).filter(
-          (p): p is LineProfile => p !== null
+        // กรองเฉพาะคนที่มี userId (ผูก LINE แล้ว) เพื่อแสดงในรายชื่อผู้เข้าร่วม
+        const verifiedUsers = (json.users as LineProfile[]).filter(
+          (u) => u.userId !== null
         );
 
-        setProfiles(results);
+        setProfiles(verifiedUsers);
       } catch (err) {
         console.error("❌ Error fetching profiles:", err);
+        toast.error("ไม่สามารถโหลดรายชื่อพนักงานได้");
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfiles();
-  }, [groupId]);
+  }, []); // นำ groupId ออกถ้า API /api/user ไม่จำเป็นต้องใช้มัน
 
-  // 🟣 submit form
+  // 🟣 submit form (คงเดิมตาม Logic ของคุณ)
   const onSubmit = async (form: MeetingForm) => {
     const loadingToast = toast.loading("⏳ กำลังส่งข้อมูล...");
 
     try {
-
       const cleanForm = {
         ...form,
-        title: form.title.replace(/\n/g, " "),          // ตัด \n ออก
-        description: form.description.replace(/\n/g, " "), // ตัด \n ออก
+        title: form.title.replace(/\n/g, " "),
+        description: form.description.replace(/\n/g, " "),
       };
-      // helper แปลงเวลา
+
       const formatDateTime = (dateStr: string) => {
         const date = new Date(dateStr);
-        // 🟣 แปลงเป็น ISO string ตาม timezone Asia/Bangkok
         return date.toLocaleString("sv-SE", { 
           timeZone: "Asia/Bangkok", 
           hour12: false 
         }).replace(" ", "T") + "+07:00";
       };
-      // ✅ เลือกผู้เข้าร่วม
+
       const selectedProfiles = profiles.filter((p) =>
-        form.participants.includes(p.userId)
+        p.userId && form.participants.includes(p.userId)
       );
 
-      // ✅ calendar event object
       const calendarEvent = {
         summary: cleanForm.title,
         description: cleanForm.description,
@@ -129,7 +98,6 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
         groupId,
       };
 
-      // ✅ ส่งไป API /api/meeting → n8n → Google Calendar
       const res = await fetch("/api/meeting", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,119 +105,109 @@ export default function MeetingContent({ groupId }: { groupId: string }) {
       });
 
       const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || "Meeting API failed");
 
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || "Meeting API failed");
-      }
-
-      // ✅ เมื่อสร้าง Calendar สำเร็จ → ส่ง flex message ไปยัง groupId
       const lineRes = await fetch("/api/line-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           groupId,
-          calendarData: result, // response จาก n8n (มี calendarLink, summary, start, end ฯลฯ)
+          calendarData: result,
           participants: selectedProfiles.map((p) => `@${p.displayName}`),
           meetingLink: form.meetingLink,
         }),
       });
 
       const lineResult = await lineRes.json();
-
       if (lineRes.ok && lineResult.success) {
-        toast.success("ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", {
-          id: loadingToast,
-        });
-        reset({
-          title: "",
-          description: "",
-          startTime: "",
-          endTime: "",
-          participants: [],
-          meetingLink: "",
-        }); // ✅ เคลียร์ input ทั้งหมด
+        toast.success("ส่งข้อมูลประชุมไปยังกลุ่มเรียบร้อยแล้ว!", { id: loadingToast });
+        reset();
       } else {
         throw new Error(lineResult.error || "LINE API failed");
       }
     } catch (err: unknown) {
-      console.error("Error:", err);
-      toast.error(`${err instanceof Error ? err.message : String(err)}`, {
-        id: loadingToast,
-      });
+      toast.error(`${err instanceof Error ? err.message : String(err)}`, { id: loadingToast });
     }
   };
 
   return (
     <main className="page-shell">
       <div className="glass-card card-pad animate-in">
-        <Toaster position="top-center" reverseOrder={false} />
+        <Toaster position="top-center" />
         <h1 className="hero-title flex items-center gap-2">
-          <i className="fa-solid fa-people-group text-purple-400" />
+          <i className="fa-solid fa-calendar-plus text-purple-400" />
           สร้างการประชุมใหม่
         </h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* หัวข้อ */}
           <div>
             <label className="form-section-title">หัวข้อการประชุม</label>
             <input
               {...register("title", { required: "กรุณากรอกหัวข้อ" })}
               className="form-input"
-              placeholder="เช่น ประชุมทีมประจำเดือน"
+              placeholder="ประชุมทีมประจำเดือน"
             />
             {errors.title && <span className="text-red-400 text-sm">{errors.title.message}</span>}
           </div>
 
-          {/* รายละเอียด */}
           <div>
             <label className="form-section-title">รายละเอียด</label>
             <textarea
               {...register("description")}
-              className="form-input min-h-[100px]"
-              placeholder="รายละเอียดวาระการประชุม..."
+              className="form-input min-h-[80px]"
+              placeholder="วาระสำคัญ..."
             />
           </div>
 
-          {/* เวลา */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="form-section-title">เวลาเริ่ม</label>
-              <input type="datetime-local" {...register("startTime", { required: "กรุณาเลือกเวลาเริ่ม" })} className="form-input" />
+              <input type="datetime-local" {...register("startTime", { required: "ระบุเวลาเริ่ม" })} className="form-input" />
             </div>
             <div>
               <label className="form-section-title">เวลาสิ้นสุด</label>
-              <input type="datetime-local" {...register("endTime", { required: "กรุณาเลือกเวลาสิ้นสุด" })} className="form-input" />
+              <input type="datetime-local" {...register("endTime", { required: "ระบุเวลาสิ้นสุด" })} className="form-input" />
             </div>
           </div>
 
-          {/* ผู้เข้าร่วม */}
           <div>
-            <label className="form-section-title">ผู้เข้าร่วม</label>
+            <label className="form-section-title">เลือกผู้เข้าร่วม (เฉพาะผู้ที่ยืนยันตัวตนแล้ว)</label>
             {loading ? (
-              <p className="text-gray-400">กำลังโหลดรายชื่อ...</p>
-            ) : (
+              <div className="flex items-center gap-2 text-gray-400 italic">
+                 <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                 กำลังโหลดรายชื่อ...
+              </div>
+            ) : profiles.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {profiles.map((p) => (
-                  <label key={p.userId} className="flex items-center gap-3 rounded-lg border bg-white/5 px-4 py-3">
-                    <input type="checkbox" value={p.userId} {...register("participants")} />
-                    {p.pictureUrl && (
-                      <Image src={p.pictureUrl} alt={p.displayName} width={40} height={40} className="rounded-full" />
+                  <label key={p.userId} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors">
+                    <input type="checkbox" value={p.userId!} {...register("participants")} className="w-4 h-4 accent-purple-500" />
+                    {p.pictureUrl ? (
+                      <Image src={p.pictureUrl} alt={p.displayName || ""} width={36} height={36} className="rounded-full ring-2 ring-purple-500/30" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-purple-500/20 flex items-center justify-center">
+                         <i className="fa-solid fa-user text-purple-400 text-xs"></i>
+                      </div>
                     )}
-                    <span className="text-sm font-medium text-gray-100">{p.displayName}</span>
+                    <div className="flex flex-col">
+                       <span className="text-sm font-semibold text-gray-100">{p.displayName || 'Unknown'}</span>
+                       <span className="text-[10px] text-gray-400">{p.email}</span>
+                    </div>
                   </label>
                 ))}
               </div>
+            ) : (
+              <p className="text-yellow-500 text-sm italic">ไม่พบพนักงานที่ยืนยันตัวตนในระบบ</p>
             )}
           </div>
 
-          {/* ลิงก์ประชุม */}
           <div>
-            <label className="form-section-title">ลิงก์การประชุม</label>
-            <input type="url" {...register("meetingLink")} className="form-input" />
+            <label className="form-section-title">ลิงก์การประชุม (ถ้ามี)</label>
+            <input type="url" {...register("meetingLink")} className="form-input" placeholder="https://zoom.us/j/..." />
           </div>
 
-          <button type="submit" className="btn-gradient">
-            <i className="fa-solid fa-paper-plane btn-icon" /> สร้างการประชุม
+          <button type="submit" disabled={loading} className="btn-gradient">
+            <i className="fa-solid fa-paper-plane btn-icon" /> สร้างและแจ้งเตือนเข้ากลุ่ม
           </button>
         </form>
       </div>
