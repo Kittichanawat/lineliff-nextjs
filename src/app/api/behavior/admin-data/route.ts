@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         const lineLogin = u.user_social_logins?.find((s) => s.provider_id.startsWith("U"));
         const targetUlineId = lineLogin?.provider_id || null;
 
-        let displayName = u.flname;
+       
         let pictureUrl: string | null = null;
 
         if (targetUlineId && CHANNEL_ACCESS_TOKEN) {
@@ -138,7 +138,6 @@ export async function POST(req: Request) {
             });
             if (lineRes.ok) {
               const profile = await lineRes.json();
-              displayName = profile.displayName;
               pictureUrl = profile.pictureUrl;
             }
           } catch (err) {
@@ -149,7 +148,7 @@ export async function POST(req: Request) {
         return {
           userId: u.id,
           uline_id: targetUlineId,
-          displayName,
+          displayName: u.flname,
           pictureUrl,
           email: u.email
         };
