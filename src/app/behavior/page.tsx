@@ -57,12 +57,14 @@ export default function BehaviorAdminPage() {
 
   useEffect(() => {
     const init = async () => {
-      try {
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
+        try {
+            // 🟢 ใส่ LIFF ID ของคุณลงไปตรงๆ แบบนี้ได้เลยครับ
+            await liff.init({ liffId: "2007772610-2rjPV8NG" }); 
+            
+            if (!liff.isLoggedIn()) {
+              liff.login();
+              return;
+            }
 
         const profile = await liff.getProfile();
         // 📡 เรียก API เส้นที่ 1 เพื่อเช็คสิทธิ์ HR และดึงข้อมูล
