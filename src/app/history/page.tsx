@@ -21,7 +21,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const initLiffAndFetch = async () => {
       try {
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+        await liff.init({ liffId: "2007772610-2rjPV8NG" });
         if (!liff.isLoggedIn()) {
           liff.login();
           return;
