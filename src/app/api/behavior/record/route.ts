@@ -1,8 +1,8 @@
-// src/app/api/behavior/record/route.ts
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// --- 1. Interfaces Definition ---
+// --- 1. Interfaces ---
+
 interface BehaviorRule {
   score: number;
   severity: string;
@@ -15,6 +15,7 @@ interface FlexMessageData {
   score: number;
   total_deducted: number;
   reason: string;
+  admin_name: string;
 }
 
 interface UserSocialLoginData {
@@ -32,13 +33,15 @@ interface RequestBody {
   hr_id: number;
 }
 
+// Initialize Supabase Admin
 const supabaseAdmin: SupabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } }
 );
 
-// --- 3. LINE Messaging Function ---
+// --- 2. LINE Messaging Function ---
+
 async function sendLineFlex(lineUserId: string, flexContents: object): Promise<void> {
   const LINE_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   try {
@@ -62,9 +65,9 @@ async function sendLineFlex(lineUserId: string, flexContents: object): Promise<v
   }
 }
 
-// --- 4. Flex Message Templates ---
+// --- 3. Flex Message Templates ---
 
-// 4.1 Normal Flex (คะแนน 0-7)
+// 3.1 Normal Flex (0-7 คะแนน)
 function getNormalFlex(data: FlexMessageData): object {
   return {
     type: "bubble",
@@ -108,6 +111,14 @@ function getNormalFlex(data: FlexMessageData): object {
               type: "box",
               layout: "horizontal",
               contents: [
+                { type: "text", text: "ผู้บันทึก", size: "sm", color: "#6B7280", flex: 2 },
+                { type: "text", text: data.admin_name, size: "sm", color: "#1F2937", flex: 4 }
+              ]
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
                 { type: "text", text: "จำนวนที่หัก", size: "sm", color: "#6B7280", flex: 2 },
                 { type: "text", text: `-${data.score} คะแนน`, size: "sm", color: "#EF4444", flex: 4, weight: "bold" }
               ]
@@ -129,17 +140,6 @@ function getNormalFlex(data: FlexMessageData): object {
                 { type: "text", text: "คะแนน", size: "xs", color: "#6B7280", gravity: "bottom", margin: "sm" }
               ],
               alignItems: "flex-end"
-            },
-            {
-              type: "box",
-              layout: "vertical",
-              margin: "md",
-              backgroundColor: "#F5F3FF",
-              cornerRadius: "md",
-              paddingAll: "md",
-              contents: [
-                { type: "text", text: "⚠️ ระบบจะแจ้งเตือนใบแดงทันทีหากคะแนนเสียสะสมครบ 16 คะแนน", size: "xxs", color: "#4338CA", wrap: true }
-              ]
             }
           ]
         }
@@ -167,7 +167,7 @@ function getNormalFlex(data: FlexMessageData): object {
   };
 }
 
-// 4.2 Yellow Card Flex (คะแนน 8-15)
+// 3.2 Yellow Card Flex (8-15 คะแนน)
 function getYellowCardFlex(data: FlexMessageData): object {
   return {
     type: "bubble",
@@ -226,6 +226,14 @@ function getYellowCardFlex(data: FlexMessageData): object {
                 { type: "text", text: "รายละเอียด", size: "xs", color: "#6B7280", flex: 2 },
                 { type: "text", text: data.reason || "-", size: "xs", color: "#1F2937", flex: 4, wrap: true }
               ]
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                { type: "text", text: "ผู้บันทึก", size: "xs", color: "#6B7280", flex: 2 },
+                { type: "text", text: data.admin_name, size: "xs", color: "#1F2937", flex: 4 }
+              ]
             }
           ]
         }
@@ -253,7 +261,7 @@ function getYellowCardFlex(data: FlexMessageData): object {
   };
 }
 
-// 4.3 Red Card Flex (คะแนน 16+)
+// 3.3 Red Card Flex (16 คะแนนขึ้นไป)
 function getRedCardFlex(data: FlexMessageData): object {
   return {
     type: "bubble",
@@ -287,10 +295,11 @@ function getRedCardFlex(data: FlexMessageData): object {
           cornerRadius: "md",
           contents: [
             { type: "text", text: `แต้มเสียสะสมครบ ${data.total_deducted} / 16`, size: "sm", color: "#991B1B", weight: "bold" },
-            { type: "text", text: `สาเหตุ: ${data.category}`, size: "xs", color: "#B91C1C", weight: "bold", margin: "sm" },
+            { type: "text", text: `สาเหตุ: ${data.category}`, size: "xs", color: "#B91C1B", weight: "bold", margin: "sm" },
             { type: "text", text: `รายละเอียด: ${data.reason || "-"}`, size: "xs", color: "#B91C1C", wrap: true, margin: "xs" },
+            { type: "text", text: `ผู้บันทึก: ${data.admin_name}`, size: "xs", color: "#B91C1C", margin: "xs" },
             { type: "separator", margin: "md", color: "#FECACA" },
-            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งเรื่องไปยังฝ่ายที่เกี่ยวข้องเพื่อพิจารณาบทลงโทษ", size: "xs", color: "#B91C1C", wrap: true, margin: "md" }
+            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งฝ่ายบุคคลเพื่อพิจารณาบทลงโทษ", size: "xs", color: "#B91C1C", wrap: true, margin: "md" }
           ]
         }
       ]
@@ -317,11 +326,13 @@ function getRedCardFlex(data: FlexMessageData): object {
   };
 }
 
-// --- Main API Route ---
+// --- 4. Main API Route ---
+
 export async function POST(req: Request): Promise<NextResponse> {
   try {
     const { user_id, rule_id, reason, hr_id }: RequestBody = await req.json();
 
+    // 4.1 Get Rule Info
     const { data: rule, error: ruleError } = await supabaseAdmin
       .from("behavior_rules")
       .select("score, severity, category, description")
@@ -331,6 +342,16 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (ruleError || !rule) throw new Error("ไม่พบข้อมูลกฎพฤติกรรม");
 
+    // 4.2 Get HR (Admin) Name
+    const { data: hrData } = await supabaseAdmin
+      .from("user")
+      .select("nname")
+      .eq("id", hr_id)
+      .single();
+    
+    const adminName = hrData?.nname || "ฝ่ายบุคคล";
+
+    // 4.3 Insert Record
     const { error: insertError } = await supabaseAdmin.from("behavior_records").insert({
       user_id,
       rule_id,
@@ -343,6 +364,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (insertError) throw insertError;
 
+    // 4.4 Get LINE Provider ID
     const { data: socialData, error: userError } = await supabaseAdmin
       .from("user_social_logins")
       .select("provider_id")
@@ -353,6 +375,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (userError) console.warn("User has no LINE linked");
 
+    // 4.5 Calculate Total Score
     const { data: records, error: recordsError } = await supabaseAdmin
       .from("behavior_records")
       .select("score_snapshot")
@@ -363,12 +386,14 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const totalDeducted: number = records?.reduce((sum: number, r: BehaviorRecordRow) => sum + r.score_snapshot, 0) || 0;
 
+    // 4.6 Send LINE Flex
     if (socialData?.provider_id) {
       const msgData: FlexMessageData = {
         category: rule.description,
         score: rule.score,
         total_deducted: totalDeducted,
-        reason: reason // ข้อมูลหมายเหตุจาก HR
+        reason: reason,
+        admin_name: adminName
       };
 
       let flexPayload: object;
