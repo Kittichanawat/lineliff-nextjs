@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import liff from '@line/liff';
-import { History, Calendar, ChevronRight, ShieldAlert, Info, Loader2 } from 'lucide-react';
+import { History, Calendar, ChevronRight, ShieldAlert, Info } from 'lucide-react';
 
 interface HistoryRecord {
   id: number;
@@ -48,9 +48,25 @@ export default function HistoryPage() {
   }, []);
 
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#0d1117]">
-      <Loader2 className="animate-spin text-purple-500" size={40} />
-    </div>
+    <main className="page-shell animate-in font-prompt">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="h-5 w-32 rounded bg-white/5 animate-pulse" />
+        <div className="h-9 w-16 rounded bg-white/5 animate-pulse" />
+      </div>
+      <div className="h-6 w-48 rounded bg-white/5 animate-pulse mb-2" />
+      <div className="h-4 w-64 rounded bg-white/5 animate-pulse mb-8" />
+  
+      {/* Status card skeleton */}
+      <div className="glass-card card-pad mb-8 h-16 animate-pulse" />
+  
+      {/* History card skeletons */}
+      <div className="space-y-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="glass-card card-pad h-20 animate-pulse" />
+        ))}
+      </div>
+    </main>
   );
 
   return (

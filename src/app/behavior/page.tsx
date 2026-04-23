@@ -58,7 +58,7 @@ export default function BehaviorAdminPage() {
   useEffect(() => {
     const init = async () => {
         try {
-            // 🟢 ใส่ LIFF ID ของคุณลงไปตรงๆ แบบนี้ได้เลยครับ
+            
             await liff.init({ liffId: "2008144186-BAaAW5w7" }); 
             
             if (!liff.isLoggedIn()) {
