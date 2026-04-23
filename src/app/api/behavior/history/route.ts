@@ -1,7 +1,8 @@
+// src/app/api/behavior/history/route.ts
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// --- Interfaces ---
+// --- Interfaces แบบ Strict Types ---
 interface SocialLogin {
   provider: string;
   provider_id: string;
@@ -22,10 +23,8 @@ interface BehaviorRecordRow {
   recorder: RecorderData | null;
 }
 
-// อัปเดต Interface มารองรับการ Join ตาราง user
 interface UserSocialLoginData {
   user_id: number;
-  user: { flname: string | null } | null; 
 }
 
 const supabaseAdmin: SupabaseClient = createClient(
@@ -49,13 +48,9 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     const lineUid = String(profile.userId);
 
-    // 2. หา user_id และ Join เอา flname จากตาราง user
     const { data: userData, error: userError } = await supabaseAdmin
       .from("user_social_logins")
-      .select(`
-        user_id,
-        user ( flname )
-      `)
+      .select("user_id")
       .eq("provider_id", lineUid)
       .returns<UserSocialLoginData[]>()
       .single();
@@ -129,9 +124,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       data: formattedRecords,
-      total_deducted: totalDeducted,
-      // ส่งชื่อผู้ใช้งานกลับไปที่ Frontend ด้วย
-      current_user_name: userData.user?.flname || "พนักงาน" 
+      total_deducted: totalDeducted
     });
 
   } catch (e: unknown) {
