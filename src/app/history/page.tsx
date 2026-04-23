@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ export default function HistoryPage() {
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [totalDeducted, setTotalDeducted] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  const [myName, setMyName] = useState<string>('');
 
   useEffect(() => {
     const initLiffAndFetch = async () => {
@@ -44,6 +46,7 @@ export default function HistoryPage() {
         if (result.success) {
           setRecords(result.data);
           setTotalDeducted(result.total_deducted);
+          setMyName(result.my_name); // เพิ่มบรรทัดนี้
         }
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -90,6 +93,9 @@ export default function HistoryPage() {
 
       <header className="mb-8">
         <h1 className="hero-title">ประวัติพฤติกรรม</h1>
+        {myName && (
+          <p className="text-sm font-medium text-indigo-300 mb-1">{myName}</p>
+        )}
         <p className="hero-sub text-sm">รายการบันทึกการหักคะแนนพฤติกรรมทั้งหมดของคุณ</p>
       </header>
 

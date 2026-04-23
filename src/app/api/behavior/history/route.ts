@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// --- Interfaces แบบ Strict Types ---
 interface SocialLogin {
   provider: string;
   provider_id: string;
@@ -25,6 +24,9 @@ interface BehaviorRecordRow {
 
 interface UserSocialLoginData {
   user_id: number;
+  user: {
+    flname: string | null;
+  } | null;
 }
 
 const supabaseAdmin: SupabaseClient = createClient(
@@ -48,14 +50,21 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     const lineUid = String(profile.userId);
 
+    // เพิ่ม join user เพื่อดึง flname ของตัวเอง
     const { data: userData, error: userError } = await supabaseAdmin
       .from("user_social_logins")
-      .select("user_id")
+      .select(`
+        user_id,
+        user ( flname )
+      `)
+      .eq("provider", "line")
       .eq("provider_id", lineUid)
       .returns<UserSocialLoginData[]>()
       .single();
 
     if (userError || !userData) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const myName = userData.user?.flname || "ไม่ระบุชื่อ";
 
     const { data: records, error: recordsError } = await supabaseAdmin
       .from("behavior_records")
@@ -124,7 +133,8 @@ export async function GET(req: Request): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       data: formattedRecords,
-      total_deducted: totalDeducted
+      total_deducted: totalDeducted,
+      my_name: myName  // ส่งชื่อตัวเองกลับไปด้วย
     });
 
   } catch (e: unknown) {
