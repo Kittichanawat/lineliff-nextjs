@@ -21,6 +21,7 @@ export default function HistoryPage() {
   const [totalDeducted, setTotalDeducted] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [myName, setMyName] = useState<string>('');
+  const [myPicture, setMyPicture] = useState<string | null>(null);
 
   useEffect(() => {
     const initLiffAndFetch = async () => {
@@ -46,7 +47,8 @@ export default function HistoryPage() {
         if (result.success) {
           setRecords(result.data);
           setTotalDeducted(result.total_deducted);
-          setMyName(result.my_name); // เพิ่มบรรทัดนี้
+          setMyName(result.my_name); 
+          setMyPicture(result.my_picture); 
         }
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -92,12 +94,30 @@ export default function HistoryPage() {
       </div>
 
       <header className="mb-8">
-        <h1 className="hero-title">ประวัติพฤติกรรม</h1>
-        {myName && (
-          <p className="text-sm font-medium text-indigo-300 mb-1">{myName}</p>
-        )}
-        <p className="hero-sub text-sm">รายการบันทึกการหักคะแนนพฤติกรรมทั้งหมดของคุณ</p>
-      </header>
+  {myName && (
+    <div className="flex items-center gap-3 mb-4 p-3 rounded-2xl bg-white/5 border border-white/10">
+      <div className="h-10 w-10 rounded-full border border-white/10 overflow-hidden bg-gray-800 shrink-0">
+        <Image
+          src={
+            myPicture ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=6c5ce7&color=fff`
+          }
+          alt={myName}
+          width={40}
+          height={40}
+          className="h-full w-full object-cover"
+          unoptimized={!myPicture}
+        />
+      </div>
+      <div>
+        <p className="text-[10px] text-gray-500 leading-none mb-1">กำลังดูประวัติของ</p>
+        <p className="text-sm font-semibold text-gray-100">{myName}</p>
+      </div>
+    </div>
+  )}
+  <h1 className="hero-title">ประวัติพฤติกรรม</h1>
+  <p className="hero-sub text-sm">รายการบันทึกการหักคะแนนพฤติกรรมทั้งหมดของคุณ</p>
+</header>
 
       <div className={`glass-card card-pad mb-8 flex items-center gap-4 border-l-4 ${totalDeducted >= 16 ? 'border-red-500' : totalDeducted >= 8 ? 'border-yellow-500' : 'border-emerald-500'
         }`}>

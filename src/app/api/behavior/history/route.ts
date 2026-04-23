@@ -64,6 +64,7 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     if (userError || !userData) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  const myPictureUrl: string | null = profile.pictureUrl ? String(profile.pictureUrl) : null;
     const myName = userData.user?.flname || "ไม่ระบุชื่อ";
 
     const { data: records, error: recordsError } = await supabaseAdmin
@@ -134,7 +135,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       success: true,
       data: formattedRecords,
       total_deducted: totalDeducted,
-      my_name: myName  // ส่งชื่อตัวเองกลับไปด้วย
+      my_name: myName,  // ส่งชื่อตัวเองกลับไปด้วย
+      my_picture: myPictureUrl  // เพิ่มตรงนี้
     });
 
   } catch (e: unknown) {
