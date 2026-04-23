@@ -124,17 +124,14 @@ export default function BehaviorAdminPage() {
   
       {/* Spinner */}
       <div
-        className="rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6"
+        className="rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-10"
         style={{ width: 72, height: 72 }}
       >
         <div className="w-7 h-7 rounded-full border-2 border-indigo-500/25 border-t-indigo-400 animate-spin" />
       </div>
   
-      <p className="text-[15px] font-semibold text-gray-200 mb-1">Checking Authorization</p>
-      <p className="text-xs text-gray-500 mb-8">กำลังตรวจสอบสิทธิ์การเข้าถึง</p>
-  
-      {/* Current Step — แสดงตรงกลาง */}
-      <div className="relative h-10 w-[260px] flex items-center justify-center mb-6">
+      {/* Current Step — ตัวใหญ่กลางจอ */}
+      <div className="relative h-14 w-[320px] flex items-center justify-center mb-10">
         {[
           { label: "เชื่อมต่อ LINE LIFF", step: 0 },
           { label: "ตรวจสอบสิทธิ์ HR",   step: 1 },
@@ -144,21 +141,22 @@ export default function BehaviorAdminPage() {
           return (
             <span
               key={label}
-              className={`absolute text-sm font-medium transition-all duration-500 ${
-                isCurrent
-                  ? "opacity-100 translate-y-0 text-indigo-300"
-                  : "opacity-0 -translate-y-3 pointer-events-none text-indigo-300"
-              }`}
+              className="absolute flex items-center gap-3 transition-all duration-500"
+              style={{
+                opacity: isCurrent ? 1 : 0,
+                transform: isCurrent ? "translateY(0) scale(1)" : "translateY(-12px) scale(0.95)",
+                pointerEvents: isCurrent ? "auto" : "none",
+              }}
             >
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse mr-2 mb-[2px]" />
-              {label}
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+              <span className="text-2xl font-semibold text-indigo-200 whitespace-nowrap">{label}</span>
             </span>
           );
         })}
       </div>
   
-      {/* Done Log — step ที่เสร็จแล้วสะสมด้านล่าง */}
-      <div className="flex flex-col items-center gap-1.5 min-h-[60px]">
+      {/* Done Log — step ที่เสร็จแล้ว */}
+      <div className="flex flex-col items-center gap-2 min-h-[60px]">
         {[
           { label: "เชื่อมต่อ LINE LIFF", step: 0 },
           { label: "ตรวจสอบสิทธิ์ HR",   step: 1 },
@@ -166,15 +164,12 @@ export default function BehaviorAdminPage() {
         ]
           .filter(({ step }) => loadStep > step)
           .map(({ label }) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 animate-[fadeUp_0.4s_ease_both]"
-            >
-              <svg className="w-3 h-3 text-green-400 flex-shrink-0" viewBox="0 0 14 14" fill="none">
+            <div key={label} className="flex items-center gap-2 animate-fadeUp">
+              <svg className="w-3.5 h-3.5 text-green-400 flex-shrink-0" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="6.5" stroke="currentColor" strokeOpacity="0.3" />
                 <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="text-[11px] text-gray-600">{label}</span>
+              <span className="text-xs text-gray-600">{label}</span>
             </div>
           ))}
       </div>
