@@ -10,10 +10,9 @@
 /* ======================== Base & Theme tokens ======================== */
 @layer base {
   :root {
-    --brand-1: #6c5ce7; /* primary */
-    --brand-2: #a66cff; /* accent */
+    --brand-1: #6c5ce7;
+    --brand-2: #a66cff;
     --ring: rgba(108, 92, 231, .35);
-    /* Enforce Dark Mode Colors */
     --card-bg: rgba(22, 24, 35, .75);
     --text-1: #e8e8ea;
     --text-2: #a8abb3;
@@ -33,7 +32,6 @@
   a {
     @apply text-indigo-400 hover:text-indigo-300;
   }
-  /* สีของ option ตอนเปิด dropdown */
   select option {
     @apply bg-gray-800 text-gray-100;
   }
@@ -41,17 +39,14 @@
 
 /* ======================== Components ======================== */
 @layer components {
-  /* Wrapper ด้านบน */
   .page-shell {
     @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6;
   }
-  /* Brand badge มุมซ้ายบน */
   .brand-badge {
     @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-semibold text-white shadow-lg;
     background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
     box-shadow: 0 6px 24px rgba(108, 92, 231, .35);
   }
-  /* การ์ดแบบ glass */
   .glass-card {
     background: var(--card-bg);
     @apply rounded-2xl border border-white/10 shadow-xl;
@@ -73,7 +68,6 @@
   .form-section-title {
     @apply block text-sm font-medium text-gray-300 mb-1;
   }
-  /* กล่อง input/select + ไอคอนซ้าย */
   .field {
     @apply relative w-full;
   }
@@ -93,7 +87,6 @@
     @apply w-full rounded-xl border border-white/10 bg-white/5 text-gray-100 px-4 py-2.5 transition-[box-shadow,border-color,background-color] duration-150;
     background-clip: padding-box;
     appearance: none;
-    /* caret ขวา */
     background-image: url("data:image/svg+xml,%3Csvg fill='none' stroke='%23a66cff' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right .85rem center;
@@ -104,15 +97,12 @@
     box-shadow: 0 0 0 4px var(--ring);
     border-color: color-mix(in oklab, var(--brand-1) 65%, white);
   }
-  /* เว้นที่ให้กับไอคอนซ้าย */
   .field .form-input, .field .form-select {
     padding-left: 2.5rem;
   }
-  /* calendar icon ชัดขึ้น (webkit) */
   input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1) opacity(.75);
   }
-  /* ปุ่ม gradient */
   .btn-gradient {
     @apply relative isolate inline-flex justify-center items-center rounded-xl px-4 py-3 font-semibold text-white w-full;
   }
@@ -130,7 +120,6 @@
   .btn-icon {
     @apply mr-2;
   }
-  /* Footer note + divider */
   .form-footer {
     @apply mt-6 flex items-center text-sm text-gray-400;
   }
@@ -141,7 +130,6 @@
   .form-footer-text {
     @apply mx-3 flex items-center gap-2;
   }
-  /* ===== Modal ===== */
   .modal-overlay {
     @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm;
   }
@@ -174,14 +162,44 @@
   @keyframes popIn {
     from {
       transform: translateY(8px);
-      opacity: 0
+      opacity: 0;
     }
     to {
       transform: none;
-      opacity: 1
+      opacity: 1;
     }
   }
   .animate-in {
     animation: popIn .5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeUp {
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes progress {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+
+  @keyframes modalIn {
+    from {
+      transform: translateY(12px) scale(0.97);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
   }
 }

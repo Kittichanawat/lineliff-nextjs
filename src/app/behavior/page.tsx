@@ -120,50 +120,65 @@ export default function BehaviorAdminPage() {
   };
 
   if (loading) return (
-    <div className="page-shell flex items-center justify-center min-h-screen">
-      <div className="flex flex-col items-center w-[260px]">
-
-        <div
-          className="rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6"
-          style={{ width: 72, height: 72 }}
-        >
-          <div className="w-7 h-7 rounded-full border-2 border-indigo-500/25 border-t-indigo-400 animate-spin" />
-        </div>
-
-        <p className="text-[15px] font-semibold text-gray-200 mb-1">Checking Authorization</p>
-        <p className="text-xs text-gray-500 mb-6">กำลังตรวจสอบสิทธิ์การเข้าถึง</p>
-
-        <div className="w-full h-[3px] bg-white/5 rounded-full overflow-hidden mb-5">
-          <div className="h-full bg-indigo-500 rounded-full animate-[progress_2.8s_cubic-bezier(0.4,0,0.2,1)_infinite]" />
-        </div>
-
-        <div className="w-full flex flex-col gap-2">
-          {[
-            { label: "เชื่อมต่อ LINE LIFF", state: loadStep >= 1 ? "done" : "active" },
-            { label: "ตรวจสอบสิทธิ์ HR",   state: loadStep >= 2 ? "done" : loadStep === 1 ? "active" : "wait" },
-            { label: "โหลดข้อมูลระบบ",      state: loadStep >= 3 ? "done" : loadStep === 2 ? "active" : "wait" },
-          ].map(({ label, state }) => (
-            <div key={label} className="flex items-center gap-2.5">
-              {state === "done" ? (
-                <svg className="w-3.5 h-3.5 text-green-400 flex-shrink-0" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6.5" stroke="currentColor" strokeOpacity="0.3" />
-                  <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              ) : (
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ml-[3px] ${
-                  state === "active" ? "bg-indigo-400 animate-pulse" : "bg-white/10"
-                }`} />
-              )}
-              <span className={`text-xs ${
-                state === "done"   ? "text-gray-400 line-through decoration-white/20" :
-                state === "active" ? "text-indigo-300 font-medium" :
-                                     "text-white/20"
-              }`}>{label}</span>
+    <div className="page-shell flex flex-col items-center justify-center min-h-screen overflow-hidden">
+  
+      {/* Spinner */}
+      <div
+        className="rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6"
+        style={{ width: 72, height: 72 }}
+      >
+        <div className="w-7 h-7 rounded-full border-2 border-indigo-500/25 border-t-indigo-400 animate-spin" />
+      </div>
+  
+      <p className="text-[15px] font-semibold text-gray-200 mb-1">Checking Authorization</p>
+      <p className="text-xs text-gray-500 mb-8">กำลังตรวจสอบสิทธิ์การเข้าถึง</p>
+  
+      {/* Current Step — แสดงตรงกลาง */}
+      <div className="relative h-10 w-[260px] flex items-center justify-center mb-6">
+        {[
+          { label: "เชื่อมต่อ LINE LIFF", step: 0 },
+          { label: "ตรวจสอบสิทธิ์ HR",   step: 1 },
+          { label: "โหลดข้อมูลระบบ",      step: 2 },
+        ].map(({ label, step }) => {
+          const isCurrent = loadStep === step;
+          return (
+            <span
+              key={label}
+              className={`absolute text-sm font-medium transition-all duration-500 ${
+                isCurrent
+                  ? "opacity-100 translate-y-0 text-indigo-300"
+                  : "opacity-0 -translate-y-3 pointer-events-none text-indigo-300"
+              }`}
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse mr-2 mb-[2px]" />
+              {label}
+            </span>
+          );
+        })}
+      </div>
+  
+      {/* Done Log — step ที่เสร็จแล้วสะสมด้านล่าง */}
+      <div className="flex flex-col items-center gap-1.5 min-h-[60px]">
+        {[
+          { label: "เชื่อมต่อ LINE LIFF", step: 0 },
+          { label: "ตรวจสอบสิทธิ์ HR",   step: 1 },
+          { label: "โหลดข้อมูลระบบ",      step: 2 },
+        ]
+          .filter(({ step }) => loadStep > step)
+          .map(({ label }) => (
+            <div
+              key={label}
+              className="flex items-center gap-2 animate-[fadeUp_0.4s_ease_both]"
+            >
+              <svg className="w-3 h-3 text-green-400 flex-shrink-0" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6.5" stroke="currentColor" strokeOpacity="0.3" />
+                <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-[11px] text-gray-600">{label}</span>
             </div>
           ))}
-        </div>
-
       </div>
+  
     </div>
   );
 
