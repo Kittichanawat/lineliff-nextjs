@@ -345,11 +345,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     // 4.2 Get HR (Admin) Name
     const { data: hrData } = await supabaseAdmin
       .from("user")
-      .select("nname")
+      .select("flname")
       .eq("id", hr_id)
       .single();
     
-    const adminName = hrData?.nname || "ฝ่ายบุคคล";
+    const adminName = hrData?.flname || "ฝ่ายบุคคล";
 
     // 4.3 Insert Record
     const { error: insertError } = await supabaseAdmin.from("behavior_records").insert({
