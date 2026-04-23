@@ -152,6 +152,16 @@ function getNormalFlex(data: FlexMessageData): object {
       contents: [
         {
           type: "button",
+          contents: [
+            {
+              type: "text",
+              text: "ตรวจสอบรายละเอียด",
+              color: "#FFFFFF",
+              align: "center",
+              size: "sm",
+              weight: "bold"
+            }
+          ],
           action: { type: "uri", label: "ตรวจสอบรายละเอียด", uri: "https://lineliff-nextjs.vercel.app/history" },
           style: "secondary", color: "#4F46E5", height: "sm"
         }
