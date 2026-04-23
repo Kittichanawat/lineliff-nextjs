@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// --- Interfaces (อ้างอิงตาม Schema จริง) ---
+// --- 1. Interfaces Definition (Strongly Typed) ---
 
 interface BehaviorRule {
   score: number;
@@ -33,17 +33,20 @@ interface RequestBody {
   hr_id: number;
 }
 
+// --- 2. Initialize Supabase ---
+
 const supabaseAdmin: SupabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } }
 );
 
-// --- LINE Messaging Function ---
+// --- 3. LINE Messaging Function ---
+
 async function sendLineFlex(lineUserId: string, flexContents: object): Promise<void> {
   const LINE_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   try {
-    await fetch("https://api.line.me/v2/bot/message/push", {
+    const response = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -58,12 +61,19 @@ async function sendLineFlex(lineUserId: string, flexContents: object): Promise<v
         }],
       }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("LINE API Error:", errorData);
+    }
   } catch (error: unknown) {
-    console.error("LINE Messaging Error:", error);
+    console.error("LINE Messaging Connection Error:", error);
   }
 }
 
-// --- Flex Templates (Normal & Red Card) ---
+// --- 4. Flex Message Templates ---
+
+// 4.1 Normal Flex (คะแนน 0-7)
 function getNormalFlex(data: FlexMessageData): object {
   return {
     type: "bubble",
@@ -129,7 +139,7 @@ function getNormalFlex(data: FlexMessageData): object {
               cornerRadius: "md",
               paddingAll: "md",
               contents: [
-                { type: "text", text: "⚠️ ระบบจะทำการแจ้งเตือนใบแดงทันทีหากคะแนนเสียสะสมครบ 16 คะแนน", size: "xxs", color: "#4338CA", wrap: true }
+                { type: "text", text: "⚠️ ระบบจะแจ้งเตือนใบแดงทันทีหากคะแนนเสียสะสมครบ 16 คะแนน", size: "xxs", color: "#4338CA", wrap: true }
               ]
             }
           ]
@@ -150,6 +160,70 @@ function getNormalFlex(data: FlexMessageData): object {
   };
 }
 
+// 4.2 Yellow Card Flex (คะแนน 8-15)
+function getYellowCardFlex(data: FlexMessageData): object {
+  return {
+    type: "bubble",
+    size: "mega",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [{ type: "text", text: "WARNING: YELLOW CARD", weight: "bold", color: "#1F2937", size: "xs" }],
+      backgroundColor: "#FFD700",
+      paddingAll: "md",
+      paddingStart: "xl"
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            { type: "image", url: "https://cdn-icons-png.flaticon.com/512/2817/2817867.png", size: "xs", aspectMode: "fit", flex: 1 },
+            { type: "text", text: "ได้รับใบเหลืองตักเตือน", weight: "bold", size: "md", color: "#1F2937", flex: 4, gravity: "center", margin: "md" }
+          ]
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          margin: "lg",
+          backgroundColor: "#FFFBEB",
+          paddingAll: "md",
+          cornerRadius: "md",
+          contents: [
+            { type: "text", text: `แต้มเสียสะสมปัจจุบัน: ${data.total_deducted} / 16`, size: "sm", color: "#92400E", weight: "bold" },
+            { type: "text", text: "กรุณาปรับปรุงพฤติกรรม หากสะสมครบ 16 แต้ม จะต้องเข้าพบฝ่ายบุคคล", size: "xs", color: "#B45309", wrap: true, margin: "sm" }
+          ]
+        },
+        { type: "separator", margin: "md" },
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "md",
+          contents: [
+            { type: "text", text: "รายการล่าสุด", size: "xs", color: "#6B7280", flex: 2 },
+            { type: "text", text: data.category, size: "xs", color: "#1F2937", flex: 4, weight: "bold", wrap: true }
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          action: { type: "uri", label: "ตรวจสอบรายละเอียด", uri: "https://lineliff-nextjs.vercel.app/history" },
+          style: "primary", color: "#1F2937", height: "sm"
+        }
+      ]
+    }
+  };
+}
+
+// 4.3 Red Card Flex (คะแนน 16+)
 function getRedCardFlex(data: FlexMessageData): object {
   return {
     type: "bubble",
@@ -183,7 +257,7 @@ function getRedCardFlex(data: FlexMessageData): object {
           cornerRadius: "md",
           contents: [
             { type: "text", text: `แต้มเสียสะสมครบ ${data.total_deducted} / 16`, size: "sm", color: "#991B1B", weight: "bold" },
-            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งเรื่องไปยังฝ่ายที่เกี่ยวข้องเพื่อพิจารณาบทลงโทษตามระเบียบขององค์กร", size: "xs", color: "#B91C1C", wrap: true, margin: "sm" }
+            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งเรื่องไปยังฝ่ายที่เกี่ยวข้องเพื่อพิจารณาบทลงโทษ", size: "xs", color: "#B91C1C", wrap: true, margin: "sm" }
           ]
         }
       ]
@@ -202,12 +276,13 @@ function getRedCardFlex(data: FlexMessageData): object {
   };
 }
 
-// --- Main API Route ---
+// --- 5. Main API Route ---
+
 export async function POST(req: Request): Promise<NextResponse> {
   try {
     const { user_id, rule_id, reason, hr_id }: RequestBody = await req.json();
 
-    // 1. ดึงข้อมูล Rule (ตาราง behavior_rules)
+    // 5.1 Fetch Rule Info
     const { data: rule, error: ruleError } = await supabaseAdmin
       .from("behavior_rules")
       .select("score, severity, category, description")
@@ -215,9 +290,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       .returns<BehaviorRule[]>()
       .single();
 
-    if (ruleError || !rule) throw new Error("ไม่พบข้อมูลกฎพฤติกรรม");
+    if (ruleError || !rule) throw ruleError || new Error("Rule not found");
 
-    // 2. บันทึก Record (ตาราง behavior_records)
+    // 5.2 Insert Record
     const { error: insertError } = await supabaseAdmin.from("behavior_records").insert({
       user_id,
       rule_id,
@@ -230,7 +305,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (insertError) throw insertError;
 
-    // 3. ดึง LINE Provider ID (จากตาราง user_social_logins ตาม Schema)
+    // 5.3 Fetch LINE Provider ID (Table: user_social_logins)
     const { data: socialData, error: userError } = await supabaseAdmin
       .from("user_social_logins")
       .select("provider_id")
@@ -239,10 +314,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       .returns<UserSocialLoginData[]>()
       .single();
 
-    // เช็ค Error เพื่อไม่ให้เกิด Warning (หรือปล่อยผ่านถ้าไม่มี LINE ก็ไม่ต้องส่ง Flex)
     if (userError) console.warn("User has no LINE linked or error fetching provider_id");
 
-    // 4. คำนวณคะแนนสะสมสด (ตาราง behavior_records)
+    // 5.4 Calculate Current Total Score
     const { data: records, error: recordsError } = await supabaseAdmin
       .from("behavior_records")
       .select("score_snapshot")
@@ -253,7 +327,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const totalDeducted: number = records?.reduce((sum: number, r: BehaviorRecordRow) => sum + r.score_snapshot, 0) || 0;
 
-    // 5. ส่ง LINE Flex Message
+    // 5.5 Logic & Send LINE Flex Message
     if (socialData?.provider_id) {
       const msgData: FlexMessageData = {
         category: rule.description,
@@ -262,9 +336,14 @@ export async function POST(req: Request): Promise<NextResponse> {
         reason: reason
       };
 
-      const flexPayload: object = totalDeducted >= 16 
-        ? getRedCardFlex(msgData) 
-        : getNormalFlex(msgData);
+      let flexPayload: object;
+      if (totalDeducted >= 16) {
+        flexPayload = getRedCardFlex(msgData);
+      } else if (totalDeducted >= 8) {
+        flexPayload = getYellowCardFlex(msgData);
+      } else {
+        flexPayload = getNormalFlex(msgData);
+      }
 
       await sendLineFlex(socialData.provider_id, flexPayload);
     }
