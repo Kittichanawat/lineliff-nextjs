@@ -100,6 +100,14 @@ function getNormalFlex(data: FlexMessageData): object {
               type: "box",
               layout: "horizontal",
               contents: [
+                { type: "text", text: "รายละเอียด", size: "sm", color: "#6B7280", flex: 2 },
+                { type: "text", text: data.reason || "-", size: "sm", color: "#1F2937", flex: 4, wrap: true }
+              ]
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
                 { type: "text", text: "จำนวนที่หัก", size: "sm", color: "#6B7280", flex: 2 },
                 { type: "text", text: `-${data.score} คะแนน`, size: "sm", color: "#EF4444", flex: 4, weight: "bold" }
               ]
