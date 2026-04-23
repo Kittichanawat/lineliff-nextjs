@@ -2,8 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// --- 1. Interfaces Definition (Strongly Typed) ---
-
+// --- 1. Interfaces Definition ---
 interface BehaviorRule {
   score: number;
   severity: string;
@@ -33,8 +32,6 @@ interface RequestBody {
   hr_id: number;
 }
 
-// --- 2. Initialize Supabase ---
-
 const supabaseAdmin: SupabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -42,11 +39,10 @@ const supabaseAdmin: SupabaseClient = createClient(
 );
 
 // --- 3. LINE Messaging Function ---
-
 async function sendLineFlex(lineUserId: string, flexContents: object): Promise<void> {
   const LINE_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   try {
-    const response = await fetch("https://api.line.me/v2/bot/message/push", {
+    await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,13 +57,8 @@ async function sendLineFlex(lineUserId: string, flexContents: object): Promise<v
         }],
       }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("LINE API Error:", errorData);
-    }
   } catch (error: unknown) {
-    console.error("LINE Messaging Connection Error:", error);
+    console.error("LINE Messaging Error:", error);
   }
 }
 
@@ -149,21 +140,19 @@ function getNormalFlex(data: FlexMessageData): object {
     footer: {
       type: "box",
       layout: "vertical",
+      paddingAll: "md",
       contents: [
         {
-          type: "button",
+          type: "box",
+          layout: "vertical",
+          backgroundColor: "#4F46E5",
+          cornerRadius: "md",
+          height: "35px",
+          justifyContent: "center",
+          action: { type: "uri", label: "Check", uri: "https://lineliff-nextjs.vercel.app/history" },
           contents: [
-            {
-              type: "text",
-              text: "ตรวจสอบรายละเอียด",
-              color: "#FFFFFF",
-              align: "center",
-              size: "sm",
-              weight: "bold"
-            }
-          ],
-          action: { type: "uri", label: "ตรวจสอบรายละเอียด", uri: "https://lineliff-nextjs.vercel.app/history" },
-          style: "secondary", color: "#4F46E5", height: "sm"
+            { type: "text", text: "ตรวจสอบรายละเอียด", color: "#FFFFFF", align: "center", size: "sm", weight: "bold" }
+          ]
         }
       ]
     }
@@ -210,11 +199,26 @@ function getYellowCardFlex(data: FlexMessageData): object {
         { type: "separator", margin: "md" },
         {
           type: "box",
-          layout: "horizontal",
+          layout: "vertical",
           margin: "md",
+          spacing: "sm",
           contents: [
-            { type: "text", text: "รายการล่าสุด", size: "xs", color: "#6B7280", flex: 2 },
-            { type: "text", text: data.category, size: "xs", color: "#1F2937", flex: 4, weight: "bold", wrap: true }
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                { type: "text", text: "รายการล่าสุด", size: "xs", color: "#6B7280", flex: 2 },
+                { type: "text", text: data.category, size: "xs", color: "#1F2937", flex: 4, weight: "bold", wrap: true }
+              ]
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                { type: "text", text: "รายละเอียด", size: "xs", color: "#6B7280", flex: 2 },
+                { type: "text", text: data.reason || "-", size: "xs", color: "#1F2937", flex: 4, wrap: true }
+              ]
+            }
           ]
         }
       ]
@@ -222,11 +226,19 @@ function getYellowCardFlex(data: FlexMessageData): object {
     footer: {
       type: "box",
       layout: "vertical",
+      paddingAll: "md",
       contents: [
         {
-          type: "button",
-          action: { type: "uri", label: "ตรวจสอบรายละเอียด", uri: "https://lineliff-nextjs.vercel.app/history" },
-          style: "primary", color: "#1F2937", height: "sm"
+          type: "box",
+          layout: "vertical",
+          backgroundColor: "#1F2937",
+          cornerRadius: "md",
+          height: "35px",
+          justifyContent: "center",
+          action: { type: "uri", label: "Check", uri: "https://lineliff-nextjs.vercel.app/history" },
+          contents: [
+            { type: "text", text: "ตรวจสอบรายละเอียด", color: "#FFFFFF", align: "center", size: "sm", weight: "bold" }
+          ]
         }
       ]
     }
@@ -267,7 +279,10 @@ function getRedCardFlex(data: FlexMessageData): object {
           cornerRadius: "md",
           contents: [
             { type: "text", text: `แต้มเสียสะสมครบ ${data.total_deducted} / 16`, size: "sm", color: "#991B1B", weight: "bold" },
-            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งเรื่องไปยังฝ่ายที่เกี่ยวข้องเพื่อพิจารณาบทลงโทษ", size: "xs", color: "#B91C1C", wrap: true, margin: "sm" }
+            { type: "text", text: `สาเหตุ: ${data.category}`, size: "xs", color: "#B91C1C", weight: "bold", margin: "sm" },
+            { type: "text", text: `รายละเอียด: ${data.reason || "-"}`, size: "xs", color: "#B91C1C", wrap: true, margin: "xs" },
+            { type: "separator", margin: "md", color: "#FECACA" },
+            { type: "text", text: "ขณะนี้คะแนนของคุณถึงจุดตัดสูงสุดแล้ว ระบบได้แจ้งเรื่องไปยังฝ่ายที่เกี่ยวข้องเพื่อพิจารณาบทลงโทษ", size: "xs", color: "#B91C1C", wrap: true, margin: "md" }
           ]
         }
       ]
@@ -275,24 +290,30 @@ function getRedCardFlex(data: FlexMessageData): object {
     footer: {
       type: "box",
       layout: "vertical",
+      paddingAll: "md",
       contents: [
         {
-          type: "button",
-          action: { type: "uri", label: "ตรวจสอบประวัติทั้งหมด", uri: "https://lineliff-nextjs.vercel.app/history" },
-          style: "primary", color: "#1F2937", height: "sm"
+          type: "box",
+          layout: "vertical",
+          backgroundColor: "#1F2937",
+          cornerRadius: "md",
+          height: "35px",
+          justifyContent: "center",
+          action: { type: "uri", label: "Check", uri: "https://lineliff-nextjs.vercel.app/history" },
+          contents: [
+            { type: "text", text: "ตรวจสอบรายละเอียด", color: "#FFFFFF", align: "center", size: "sm", weight: "bold" }
+          ]
         }
       ]
     }
   };
 }
 
-// --- 5. Main API Route ---
-
+// --- Main API Route ---
 export async function POST(req: Request): Promise<NextResponse> {
   try {
     const { user_id, rule_id, reason, hr_id }: RequestBody = await req.json();
 
-    // 5.1 Fetch Rule Info
     const { data: rule, error: ruleError } = await supabaseAdmin
       .from("behavior_rules")
       .select("score, severity, category, description")
@@ -300,9 +321,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       .returns<BehaviorRule[]>()
       .single();
 
-    if (ruleError || !rule) throw ruleError || new Error("Rule not found");
+    if (ruleError || !rule) throw new Error("ไม่พบข้อมูลกฎพฤติกรรม");
 
-    // 5.2 Insert Record
     const { error: insertError } = await supabaseAdmin.from("behavior_records").insert({
       user_id,
       rule_id,
@@ -315,7 +335,6 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (insertError) throw insertError;
 
-    // 5.3 Fetch LINE Provider ID (Table: user_social_logins)
     const { data: socialData, error: userError } = await supabaseAdmin
       .from("user_social_logins")
       .select("provider_id")
@@ -324,9 +343,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       .returns<UserSocialLoginData[]>()
       .single();
 
-    if (userError) console.warn("User has no LINE linked or error fetching provider_id");
+    if (userError) console.warn("User has no LINE linked");
 
-    // 5.4 Calculate Current Total Score
     const { data: records, error: recordsError } = await supabaseAdmin
       .from("behavior_records")
       .select("score_snapshot")
@@ -337,13 +355,12 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const totalDeducted: number = records?.reduce((sum: number, r: BehaviorRecordRow) => sum + r.score_snapshot, 0) || 0;
 
-    // 5.5 Logic & Send LINE Flex Message
     if (socialData?.provider_id) {
       const msgData: FlexMessageData = {
         category: rule.description,
         score: rule.score,
         total_deducted: totalDeducted,
-        reason: reason
+        reason: reason // ข้อมูลหมายเหตุจาก HR
       };
 
       let flexPayload: object;
