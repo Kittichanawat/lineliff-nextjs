@@ -99,7 +99,7 @@ export default function BehaviorAdminPage() {
       });
 
       if (res.data.success) {
-        toast.success("✅บันทึกการหักคะแนนสำเร็จ", { id: loadingToast });
+        toast.success("บันทึกการหักคะแนนสำเร็จ", { id: loadingToast });
         reset();
       } else {
         throw new Error(res.data.error);
@@ -139,7 +139,7 @@ export default function BehaviorAdminPage() {
           <h1 className="hero-title flex items-center gap-2">
             <i className="fa-solid fa-gavel text-purple-400" /> ตัดคะแนนพฤติกรรม
           </h1>
-          <p className="text-xs text-gray-400 mt-1">ผู้บันทึก: {data.hrInfo?.name} ({data.hrInfo?.department})</p>
+         
         </header>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
