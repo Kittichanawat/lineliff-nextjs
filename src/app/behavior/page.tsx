@@ -87,7 +87,7 @@ export default function BehaviorAdminPage() {
     if (!data?.hrId) return;
     
     setIsSubmitting(true);
-    const loadingToast = toast.loading("⏳ กำลังบันทึกข้อมูล...");
+    const loadingToast = toast.loading("กำลังบันทึกข้อมูล...");
 
     try {
       // 📡 เรียก API เส้นที่ 2 เพื่อบันทึก Record
@@ -99,7 +99,7 @@ export default function BehaviorAdminPage() {
       });
 
       if (res.data.success) {
-        toast.success("✅ บันทึกการหักคะแนนสำเร็จ", { id: loadingToast });
+        toast.success("✅บันทึกการหักคะแนนสำเร็จ", { id: loadingToast });
         reset();
       } else {
         throw new Error(res.data.error);
