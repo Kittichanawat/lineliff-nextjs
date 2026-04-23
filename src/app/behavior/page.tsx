@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import toast, { Toaster } from "react-hot-toast";
 import liff from "@line/liff";
-import Image from "next/image"; // นำมาใช้งานจริงแล้วครับ
+import Image from "next/image";
 import axios from "axios";
 
-// --- Interfaces ---
 interface Rule {
   id: number;
   category: string;
@@ -45,34 +44,38 @@ export default function BehaviorAdminPage() {
   const [data, setData] = useState<AdminDataResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadStep, setLoadStep] = useState(0);
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<BehaviorForm>();
-  
+
   const selectedUserId = watch("user_id");
   const selectedRuleId = watch("rule_id");
 
-  // ค้นหาข้อมูลพนักงานและกฎที่เลือกเพื่อแสดงผล Preview
   const currentUser = data?.users?.find((u) => u.userId.toString() === selectedUserId);
   const currentRule = data?.rules?.find((r) => r.id.toString() === selectedRuleId);
 
   useEffect(() => {
     const init = async () => {
-        try {
-            
-            await liff.init({ liffId: "2008144186-BAaAW5w7" }); 
-            
-            if (!liff.isLoggedIn()) {
-              liff.login();
-              return;
-            }
+      try {
+        await liff.init({ liffId: "2008144186-BAaAW5w7" });
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        setLoadStep(1); // ✅ LIFF เชื่อมต่อแล้ว
 
         const profile = await liff.getProfile();
-        // 📡 เรียก API เส้นที่ 1 เพื่อเช็คสิทธิ์ HR และดึงข้อมูล
-        const res = await axios.post<AdminDataResponse>("/api/behavior/admin-data", { 
-          uline_id: profile.userId 
+        setLoadStep(2); // ✅ ตรวจสอบสิทธิ์ HR
+
+        const res = await axios.post<AdminDataResponse>("/api/behavior/admin-data", {
+          uline_id: profile.userId,
         });
-        
+
+        setLoadStep(3); // ✅ โหลดข้อมูลสำเร็จ
         setData(res.data);
+
       } catch (err) {
         console.error(err);
         toast.error("เข้าถึงไม่ได้: เฉพาะแผนก HR เท่านั้น");
@@ -85,17 +88,16 @@ export default function BehaviorAdminPage() {
 
   const onSubmit = async (formData: BehaviorForm) => {
     if (!data?.hrId) return;
-    
+
     setIsSubmitting(true);
     const loadingToast = toast.loading("กำลังบันทึกข้อมูล...");
 
     try {
-      // 📡 เรียก API เส้นที่ 2 เพื่อบันทึก Record
       const res = await axios.post("/api/behavior/record", {
         user_id: Number(formData.user_id),
         rule_id: Number(formData.rule_id),
         reason: formData.reason,
-        hr_id: data.hrId
+        hr_id: data.hrId,
       });
 
       if (res.data.success) {
@@ -104,64 +106,67 @@ export default function BehaviorAdminPage() {
       } else {
         throw new Error(res.data.error);
       }
-    } catch (err: unknown) { // 🟢 เปลี่ยนจาก any เป็น unknown
-        // ตรวจสอบว่า err เป็นก้อนข้อมูลจาก Axios หรือไม่
-        let errorMessage = "เกิดข้อผิดพลาดในการบันทึก";
-        
-        if (axios.isAxiosError(err)) {
-          errorMessage = err.response?.data?.error || errorMessage;
-        } else if (err instanceof Error) {
-          errorMessage = err.message;
-        }
-      
-        toast.error(errorMessage, { id: loadingToast });
-      }finally {
+    } catch (err: unknown) {
+      let errorMessage = "เกิดข้อผิดพลาดในการบันทึก";
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.error || errorMessage;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      toast.error(errorMessage, { id: loadingToast });
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   if (loading) return (
     <div className="page-shell flex items-center justify-center min-h-screen">
-      <div className="flex flex-col items-center gap-0 w-[260px]">
-        
-        {/* Icon + Spinner */}
-        <div className="w-18 h-18 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6" style={{width:72,height:72}}>
+      <div className="flex flex-col items-center w-[260px]">
+
+        <div
+          className="rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6"
+          style={{ width: 72, height: 72 }}
+        >
           <div className="w-7 h-7 rounded-full border-2 border-indigo-500/25 border-t-indigo-400 animate-spin" />
         </div>
-  
+
         <p className="text-[15px] font-semibold text-gray-200 mb-1">Checking Authorization</p>
         <p className="text-xs text-gray-500 mb-6">กำลังตรวจสอบสิทธิ์การเข้าถึง</p>
-  
-        {/* Progress bar */}
+
         <div className="w-full h-[3px] bg-white/5 rounded-full overflow-hidden mb-5">
           <div className="h-full bg-indigo-500 rounded-full animate-[progress_2.8s_cubic-bezier(0.4,0,0.2,1)_infinite]" />
         </div>
-  
-        {/* Steps */}
+
         <div className="w-full flex flex-col gap-2">
           {[
-            { label: "เชื่อมต่อ LINE LIFF สำเร็จ", state: "done" },
-            { label: "ตรวจสอบสิทธิ์ HR...",         state: "active" },
-            { label: "โหลดข้อมูลระบบ",               state: "wait" },
+            { label: "เชื่อมต่อ LINE LIFF", state: loadStep >= 1 ? "done" : "active" },
+            { label: "ตรวจสอบสิทธิ์ HR",   state: loadStep >= 2 ? "done" : loadStep === 1 ? "active" : "wait" },
+            { label: "โหลดข้อมูลระบบ",      state: loadStep >= 3 ? "done" : loadStep === 2 ? "active" : "wait" },
           ].map(({ label, state }) => (
             <div key={label} className="flex items-center gap-2.5">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                state === "done"   ? "bg-green-500" :
-                state === "active" ? "bg-indigo-400 animate-pulse" :
-                                     "bg-white/10"
-              }`} />
+              {state === "done" ? (
+                <svg className="w-3.5 h-3.5 text-green-400 flex-shrink-0" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6.5" stroke="currentColor" strokeOpacity="0.3" />
+                  <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ml-[3px] ${
+                  state === "active" ? "bg-indigo-400 animate-pulse" : "bg-white/10"
+                }`} />
+              )}
               <span className={`text-xs ${
-                state === "done"   ? "text-gray-500" :
+                state === "done"   ? "text-gray-400 line-through decoration-white/20" :
                 state === "active" ? "text-indigo-300 font-medium" :
                                      "text-white/20"
               }`}>{label}</span>
             </div>
           ))}
         </div>
-  
+
       </div>
     </div>
   );
+
   if (!data?.success) return (
     <div className="page-shell flex flex-col items-center justify-center pt-20">
       <i className="fa-solid fa-lock text-red-500 text-5xl mb-4" />
@@ -173,17 +178,17 @@ export default function BehaviorAdminPage() {
   return (
     <main className="page-shell">
       <Toaster position="top-center" />
-      
+
       <div className="glass-card card-pad animate-in">
         <header className="mb-8">
           <div className="brand-badge mb-2">HR Administration</div>
           <h1 className="hero-title flex items-center gap-2">
             <i className="fa-solid fa-gavel text-purple-400" /> ตัดคะแนนพฤติกรรม
           </h1>
-         
         </header>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
           {/* เลือกพนักงาน */}
           <div>
             <label className="form-section-title">เลือกพนักงานที่ทำผิดกฎ</label>
@@ -192,7 +197,7 @@ export default function BehaviorAdminPage() {
                 <option value="">-- ค้นหารายชื่อพนักงาน --</option>
                 {data.users.map((u) => (
                   <option key={u.userId} value={u.userId}>
-                    {u.displayName || 'No Name'} ({u.email})
+                    {u.displayName || "No Name"} ({u.email})
                   </option>
                 ))}
               </select>
@@ -200,15 +205,15 @@ export default function BehaviorAdminPage() {
             </div>
           </div>
 
-          {/* User Preview (โชว์รูปพนักงานเมื่อถูกเลือก) */}
+          {/* User Preview */}
           {currentUser && (
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 animate-in">
               {currentUser.pictureUrl ? (
-                <Image 
-                  src={currentUser.pictureUrl} 
-                  alt={currentUser.displayName || ""} 
-                  width={50} 
-                  height={50} 
+                <Image
+                  src={currentUser.pictureUrl}
+                  alt={currentUser.displayName || ""}
+                  width={50}
+                  height={50}
                   className="rounded-full ring-2 ring-purple-500/50"
                 />
               ) : (
@@ -217,7 +222,7 @@ export default function BehaviorAdminPage() {
                 </div>
               )}
               <div>
-                <p className="text-sm font-bold text-gray-100">{currentUser.displayName || 'พนักงานไม่มีชื่อ LINE'}</p>
+                <p className="text-sm font-bold text-gray-100">{currentUser.displayName || "พนักงานไม่มีชื่อ LINE"}</p>
                 <p className="text-xs text-gray-400">{currentUser.email}</p>
               </div>
             </div>
@@ -256,20 +261,21 @@ export default function BehaviorAdminPage() {
           {/* รายละเอียด */}
           <div>
             <label className="form-section-title">รายละเอียดเหตุการณ์</label>
-            <textarea 
-              {...register("reason")} 
-              className="form-input min-h-[100px] py-3 pl-4" 
+            <textarea
+              {...register("reason")}
+              className="form-input min-h-[100px] py-3 pl-4"
               placeholder="ระบุเหตุผล หรือรายละเอียดประกอบการพิจารณา..."
             />
           </div>
 
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
+          <button
+            type="submit"
+            disabled={isSubmitting}
             className="btn-gradient"
           >
             {isSubmitting ? "กำลังดำเนินการ..." : "ยืนยันการบันทึกความผิด"}
           </button>
+
         </form>
       </div>
     </main>
