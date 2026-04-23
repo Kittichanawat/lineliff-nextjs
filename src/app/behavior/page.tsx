@@ -120,7 +120,48 @@ export default function BehaviorAdminPage() {
     }
   };
 
-  if (loading) return <div className="page-shell text-center pt-20 text-gray-400 italic">Checking Authorization...</div>;
+  if (loading) return (
+    <div className="page-shell flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center gap-0 w-[260px]">
+        
+        {/* Icon + Spinner */}
+        <div className="w-18 h-18 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-6" style={{width:72,height:72}}>
+          <div className="w-7 h-7 rounded-full border-2 border-indigo-500/25 border-t-indigo-400 animate-spin" />
+        </div>
+  
+        <p className="text-[15px] font-semibold text-gray-200 mb-1">Checking Authorization</p>
+        <p className="text-xs text-gray-500 mb-6">กำลังตรวจสอบสิทธิ์การเข้าถึง</p>
+  
+        {/* Progress bar */}
+        <div className="w-full h-[3px] bg-white/5 rounded-full overflow-hidden mb-5">
+          <div className="h-full bg-indigo-500 rounded-full animate-[progress_2.8s_cubic-bezier(0.4,0,0.2,1)_infinite]" />
+        </div>
+  
+        {/* Steps */}
+        <div className="w-full flex flex-col gap-2">
+          {[
+            { label: "เชื่อมต่อ LINE LIFF สำเร็จ", state: "done" },
+            { label: "ตรวจสอบสิทธิ์ HR...",         state: "active" },
+            { label: "โหลดข้อมูลระบบ",               state: "wait" },
+          ].map(({ label, state }) => (
+            <div key={label} className="flex items-center gap-2.5">
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                state === "done"   ? "bg-green-500" :
+                state === "active" ? "bg-indigo-400 animate-pulse" :
+                                     "bg-white/10"
+              }`} />
+              <span className={`text-xs ${
+                state === "done"   ? "text-gray-500" :
+                state === "active" ? "text-indigo-300 font-medium" :
+                                     "text-white/20"
+              }`}>{label}</span>
+            </div>
+          ))}
+        </div>
+  
+      </div>
+    </div>
+  );
   if (!data?.success) return (
     <div className="page-shell flex flex-col items-center justify-center pt-20">
       <i className="fa-solid fa-lock text-red-500 text-5xl mb-4" />
