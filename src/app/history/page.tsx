@@ -204,13 +204,10 @@ export default function HistoryPage() {
       </div>
 
       <footer className="mt-8 mb-8">
-        <div className="btn-gradient cursor-pointer">
-          <span className="text-sm">ติดต่อฝ่ายบุคคลเพื่อคัดค้าน</span>
-        </div>
         <div className="form-footer mt-4">
           <div className="form-footer-text opacity-50">
             <Info size={12} />
-            <span className="text-[10px]">ข้อมูลอัปเดตแบบ Real-time จากระบบ HR</span>
+            <span className="text-[10px]">codelabs</span>
           </div>
         </div>
       </footer>
